@@ -575,7 +575,7 @@ function generateStackedLayout(topics) {
                                         ` : ''}
                                         
                                         ${topic.buttonText && topic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
+                                        <div style="text-align: center; margin-top: 15px;">
                                             <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
                                                 ${topic.buttonText}
                                             </a>
@@ -654,7 +654,7 @@ function generateHeroLayout(topics) {
                                         ` : ''}
                                         
                                         ${leftTopic.buttonText && leftTopic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
+                                        <div style="text-align: center; margin-top: 15px;">
                                             <a href="${leftTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
                                                 ${leftTopic.buttonText}
                                             </a>
@@ -681,7 +681,7 @@ function generateHeroLayout(topics) {
                                         ` : ''}
                                         
                                         ${rightTopic.buttonText && rightTopic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
+                                        <div style="text-align: center; margin-top: 15px;">
                                             <a href="${rightTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
                                                 ${rightTopic.buttonText}
                                             </a>
@@ -722,7 +722,7 @@ function generateOffsetLayout(topics) {
             </div>
             ` : ''}
             ${topic.buttonText && topic.buttonUrl ? `
-            <div style="text-align: left; margin-top: 15px;">
+            <div style="text-align: center; margin-top: 15px;">
                 <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
                     ${topic.buttonText}
                 </a>
