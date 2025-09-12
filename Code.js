@@ -24,6 +24,7 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Newsletter Tools')
     .addItem('Send Newsletter', 'showColumnPicker')
+    .addItem('Create Draft Newsletter', 'showDraftPicker')
     .addItem('Preview Newsletter', 'showPreviewPicker')
     .addSeparator()
     .addItem('Generate HTML Only', 'showGeneratePicker')
@@ -41,6 +42,19 @@ function showColumnPicker() {
     .setTitle('Select Newsletter to Send');
   
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Send Newsletter');
+}
+
+/**
+ * Shows dialog to select column/date for creating a draft
+ */
+function showDraftPicker() {
+  const html = createColumnPickerDialog('draft');
+  const htmlOutput = HtmlService.createHtmlOutput(html)
+    .setWidth(400)
+    .setHeight(300)
+    .setTitle('Select Newsletter to Create Draft');
+  
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Create Newsletter Draft');
 }
 
 /**
@@ -71,7 +85,7 @@ function showGeneratePicker() {
 
 /**
  * Creates HTML dialog for column selection
- * @param {string} action - The action to perform (send, preview, generate)
+ * @param {string} action - The action to perform (send, preview, generate, draft)
  * @returns {string} HTML for dialog
  */
 function createColumnPickerDialog(action) {
@@ -185,6 +199,17 @@ function createColumnPickerDialog(action) {
                 restoreButtons();
               })
               .sendNewsletterFromColumn(column);
+          } else if (action === 'draft') {
+            google.script.run
+              .withSuccessHandler(() => {
+                alert('Newsletter draft created successfully!');
+                google.script.host.close();
+              })
+              .withFailureHandler((error) => {
+                alert('Error creating newsletter draft: ' + error.message);
+                restoreButtons();
+              })
+              .createDraftNewsletterFromColumn(column);
           } else if (action === 'preview') {
             google.script.run
               .withSuccessHandler((html) => {
@@ -276,6 +301,48 @@ function sendNewsletterFromColumn(column) {
   } catch (error) {
     console.error(`Error sending newsletter from column ${column}:`, error);
     throw new Error('Failed to send newsletter: ' + error.message);
+  }
+}
+
+/**
+ * Creates a draft newsletter email from specified column
+ * @param {string} column - Column letter (B, C, D, E, F)
+ * @returns {boolean} Success status
+ */
+function createDraftNewsletterFromColumn(column) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const data = getNewsletterDataFromColumn(sheet, column);
+    
+    if (!data.to) {
+      throw new Error(`No recipients specified in "To" field for column ${column}`);
+    }
+    
+    if (!data.title) {
+      throw new Error(`Newsletter title is required for column ${column}`);
+    }
+    
+    const html = createNewsletterHTML(data);
+    const subject = data.title + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
+    
+    GmailApp.createDraft(
+      data.to,
+      subject,
+      '',
+      {
+        htmlBody: html,
+        cc: data.cc || '',
+        bcc: data.bcc || '',
+        attachments: []
+      }
+    );
+    
+    console.log(`Newsletter draft created successfully from column ${column} for:`, data.to);
+    return true;
+    
+  } catch (error) {
+    console.error(`Error creating newsletter draft from column ${column}:`, error);
+    throw new Error('Failed to create newsletter draft: ' + error.message);
   }
 }
 
