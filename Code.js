@@ -9,12 +9,12 @@
  * 
  * Data Layout (same for each column):
  * Row 2: Title, Row 3: Subtitle
- * Row 4: Topic 1 Title, Row 5: Topic 1 URL, Row 6: Topic 1 Text, Row 7: Topic 1 Button Text, Row 8: Topic 1 Button URL
- * Row 9: Topic 2 Title, Row 10: Topic 2 URL, Row 11: Topic 2 Description, Row 12: Topic 2 Button Text, Row 13: Topic 2 Button URL
- * Row 14: Topic 3 Title, Row 15: Topic 3 URL, Row 16: Topic 3 Description, Row 17: Topic 3 Button Text, Row 18: Topic 3 Button URL
- * Row 19: Final Button URL
- * Row 20: To, Row 21: CC, Row 22: BCC
- * Row 23: Layout Style ("Stacked", "Offset", or "Hero" - defaults to "Offset")
+ * Row 4: Topic 1 Title, Row 5: Topic 1 URL, Row 6: Topic 1 Text
+ * Row 7: Topic 2 Title, Row 8: Topic 2 URL, Row 9: Topic 2 Description
+ * Row 10: Topic 3 Title, Row 11: Topic 3 URL, Row 12: Topic 3 Description
+ * Row 13: Final Button URL
+ * Row 14: To, Row 15: CC, Row 16: BCC
+ * Row 17: Layout Style ("Stacked", "Offset", or "Hero" - defaults to "Offset")
  */
 
 /**
@@ -264,29 +264,23 @@ function getNewsletterDataFromColumn(sheet, column) {
     topic1: {
       title: sheet.getRange(column + '4').getValue(),
       url: sheet.getRange(column + '5').getValue(),
-      text: sheet.getRange(column + '6').getValue(),
-      buttonText: sheet.getRange(column + '7').getValue(),
-      buttonUrl: sheet.getRange(column + '8').getValue()
+      text: sheet.getRange(column + '6').getValue()
     },
     topic2: {
-      title: sheet.getRange(column + '9').getValue(),
-      url: sheet.getRange(column + '10').getValue(),
-      description: sheet.getRange(column + '11').getValue(),
-      buttonText: sheet.getRange(column + '12').getValue(),
-      buttonUrl: sheet.getRange(column + '13').getValue()
+      title: sheet.getRange(column + '7').getValue(),
+      url: sheet.getRange(column + '8').getValue(),
+      description: sheet.getRange(column + '9').getValue()
     },
     topic3: {
-      title: sheet.getRange(column + '14').getValue(),
-      url: sheet.getRange(column + '15').getValue(),
-      description: sheet.getRange(column + '16').getValue(),
-      buttonText: sheet.getRange(column + '17').getValue(),
-      buttonUrl: sheet.getRange(column + '18').getValue()
+      title: sheet.getRange(column + '10').getValue(),
+      url: sheet.getRange(column + '11').getValue(),
+      description: sheet.getRange(column + '12').getValue()
     },
-    finalButtonUrl: sheet.getRange(column + '19').getValue(),
-    to: sheet.getRange(column + '20').getValue(),
-    cc: sheet.getRange(column + '21').getValue(),
-    bcc: sheet.getRange(column + '22').getValue(),
-    layoutStyle: sheet.getRange(column + '23').getValue()
+    finalButtonUrl: sheet.getRange(column + '13').getValue(),
+    to: sheet.getRange(column + '14').getValue(),
+    cc: sheet.getRange(column + '15').getValue(),
+    bcc: sheet.getRange(column + '16').getValue(),
+    layoutStyle: sheet.getRange(column + '17').getValue()
   };
   
   return data;
@@ -300,95 +294,72 @@ function getNewsletterData(sheet) {
 }
 
 /**
- * Converts Google Drive sharing URL to base64 embedded image, and handles other image URL types
- * @param {string} url - Image URL (Google Drive sharing URL, base64 data URL, or direct URL)
- * @returns {string} Processed image URL (base64 for Drive images, original for others)
+ * Converts Google Drive sharing URL to direct image URL, or any URL to base64 for email embedding
+ * @param {string} url - Image URL
+ * @returns {string} Base64 data URL or original URL if conversion fails
  */
 function convertDriveImageUrl(url) {
   if (!url || typeof url !== 'string') return '';
   
-  // Handle base64 data URLs - validate and pass through
-  if (url.startsWith('data:image/')) {
-    try {
-      // Basic validation: check for proper data URL format
-      const dataUrlPattern = /^data:image\/(png|jpg|jpeg|gif|webp|svg\+xml);base64,/i;
-      if (dataUrlPattern.test(url)) {
-        return url;
-      } else {
-        console.warn('Invalid base64 image format detected:', url.substring(0, 50) + '...');
-        return url; // Return anyway - browser will handle invalid data URLs gracefully
-      }
-    } catch (error) {
-      console.error('Error processing base64 image URL:', error);
-      return url; // Return original URL as fallback
-    }
-  }
-  
-  // Handle Google Drive sharing URLs - fetch and convert to base64
+  // First handle Google Drive URLs
   const drivePattern = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
   const match = url.match(drivePattern);
   
+  let imageUrl = url;
   if (match && match[1]) {
-    try {
-      const fileId = match[1];
-      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      
-      console.log('Fetching Google Drive image:', fileId);
-      
-      // Fetch the image data via HTTP
-      const response = UrlFetchApp.fetch(downloadUrl, {
-        method: 'GET',
-        followRedirects: true,
-        muteHttpExceptions: true,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; Google Apps Script)'
-        }
-      });
-      
-      if (response.getResponseCode() !== 200) {
-        console.error('Failed to fetch Google Drive image:', response.getResponseCode(), response.getContentText());
-        // Fallback to direct view URL
-        return `https://drive.google.com/uc?id=${fileId}`;
-      }
-      
-      // Get the image blob and convert to base64
-      const blob = response.getBlob();
-      const base64Data = Utilities.base64Encode(blob.getBytes());
-      const mimeType = blob.getContentType();
-      
-      // Validate mime type
-      if (!mimeType || !mimeType.startsWith('image/')) {
-        console.warn('Google Drive file is not an image:', mimeType);
-        // Fallback to direct view URL
-        return `https://drive.google.com/uc?id=${fileId}`;
-      }
-      
-      const dataUrl = `data:${mimeType};base64,${base64Data}`;
-      console.log('Successfully converted Google Drive image to base64, size:', base64Data.length);
-      
-      return dataUrl;
-      
-    } catch (error) {
-      console.error('Error fetching/converting Google Drive image:', error);
-      // Fallback to direct view URL
-      return `https://drive.google.com/uc?id=${match[1]}`;
-    }
+    imageUrl = `https://drive.google.com/uc?id=${match[1]}`;
   }
   
-  // Return other URLs unchanged (direct image URLs, etc.)
-  return url;
+  // Convert any image URL to base64 for reliable email delivery
+  return convertImageToBase64(imageUrl);
 }
 
 /**
- * Validates if a string is a properly formatted base64 data URL
- * @param {string} url - URL to validate
- * @returns {boolean} True if valid base64 data URL
+ * Converts image URL to base64 data URL for email embedding
+ * @param {string} url - Image URL
+ * @returns {string} Base64 data URL or original URL if conversion fails
  */
-function isValidBase64ImageUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  
-  const dataUrlPattern = /^data:image\/(png|jpg|jpeg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)$/i;
-  return dataUrlPattern.test(url);
+function convertImageToBase64(url) {
+  try {
+    console.log('Converting image to base64:', url);
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; GoogleAppsScript)'
+      },
+      muteHttpExceptions: true
+    });
+    
+    if (response.getResponseCode() !== 200) {
+      console.error('Failed to fetch image:', response.getResponseCode(), response.getContentText());
+      return url; // fallback to original URL
+    }
+    
+    const blob = response.getBlob();
+    const base64 = Utilities.base64Encode(blob.getBytes());
+    const mimeType = blob.getContentType();
+    
+    // Validate it's an image
+    if (!mimeType.startsWith('image/')) {
+      console.error('URL does not return an image:', mimeType);
+      return url;
+    }
+    
+    // Check size (warn if over 100KB)
+    const sizeKB = blob.getBytes().length / 1024;
+    if (sizeKB > 100) {
+      console.warn(`Large image detected: ${sizeKB.toFixed(1)}KB. Consider optimizing for faster email loading.`);
+    }
+    
+    const base64Url = `data:${mimeType};base64,${base64}`;
+    console.log(`Image converted successfully: ${sizeKB.toFixed(1)}KB`);
+    return base64Url;
+    
+  } catch (error) {
+    console.error('Failed to convert image to base64:', error);
+    return url; // fallback to original URL
+  }
 }
 
 /**
@@ -403,9 +374,7 @@ function createNewsletterHTML(data) {
     topics.push({
       title: data.topic1.title,
       url: convertDriveImageUrl(data.topic1.url),
-      description: data.topic1.text || '',
-      buttonText: data.topic1.buttonText,
-      buttonUrl: data.topic1.buttonUrl
+      description: data.topic1.text || ''
     });
   }
   
@@ -413,9 +382,7 @@ function createNewsletterHTML(data) {
     topics.push({
       title: data.topic2.title,
       url: convertDriveImageUrl(data.topic2.url),
-      description: data.topic2.description || '',
-      buttonText: data.topic2.buttonText,
-      buttonUrl: data.topic2.buttonUrl
+      description: data.topic2.description || ''
     });
   }
   
@@ -423,9 +390,7 @@ function createNewsletterHTML(data) {
     topics.push({
       title: data.topic3.title,
       url: convertDriveImageUrl(data.topic3.url),
-      description: data.topic3.description || '',
-      buttonText: data.topic3.buttonText,
-      buttonUrl: data.topic3.buttonUrl
+      description: data.topic3.description || ''
     });
   }
   
@@ -493,8 +458,8 @@ function createNewsletterHTML(data) {
                     <tr>
                         <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: center;">
                             <p style="color: #eaecf5; font-size: 12px; font-weight: 400; margin: 0; line-height: 1.5;">
-                                © ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
-                                <span style="color: #4356a0;">Empowering digital learning and innovation</span>
+                                ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
+                                <span style="color: #4356a0;">Empowering Digital Learning and Innovation</span>
                             </p>
                         </td>
                     </tr>
@@ -533,14 +498,6 @@ function generateStackedLayout(topics) {
                                             <p style="color: #333333; font-size: 14px; font-weight: 400; margin: 0; line-height: 1.6;">${topic.description}</p>
                                         </div>
                                         ` : ''}
-                                        
-                                        ${topic.buttonText && topic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
-                                            <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${topic.buttonText}
-                                            </a>
-                                        </div>
-                                        ` : ''}
                                     </td>
                                 </tr>
                             </table>
@@ -575,14 +532,6 @@ function generateHeroLayout(topics) {
                                             <p style="color: #333333; font-size: 16px; font-weight: 400; margin: 0; line-height: 1.6; text-align: center;">${heroTopic.description}</p>
                                         </div>
                                         ` : ''}
-                                        
-                                        ${heroTopic.buttonText && heroTopic.buttonUrl ? `
-                                        <div style="text-align: center; margin-top: 20px;">
-                                            <a href="${heroTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${heroTopic.buttonText}
-                                            </a>
-                                        </div>
-                                        ` : ''}
                                     </td>
                                 </tr>
                             </table>
@@ -612,14 +561,6 @@ function generateHeroLayout(topics) {
                                             <p style="color: #333333; font-size: 13px; font-weight: 400; margin: 0; line-height: 1.5;">${leftTopic.description}</p>
                                         </div>
                                         ` : ''}
-                                        
-                                        ${leftTopic.buttonText && leftTopic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
-                                            <a href="${leftTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${leftTopic.buttonText}
-                                            </a>
-                                        </div>
-                                        ` : ''}
                                     </td>
                                     
                                     ${rightTopic ? `
@@ -637,14 +578,6 @@ function generateHeroLayout(topics) {
                                         ${rightTopic.description ? `
                                         <div style="background-color: #eaecf5; padding: 15px; border-radius: 6px; border-left: 3px solid #2d3f89;">
                                             <p style="color: #333333; font-size: 13px; font-weight: 400; margin: 0; line-height: 1.5;">${rightTopic.description}</p>
-                                        </div>
-                                        ` : ''}
-                                        
-                                        ${rightTopic.buttonText && rightTopic.buttonUrl ? `
-                                        <div style="text-align: left; margin-top: 15px;">
-                                            <a href="${rightTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${rightTopic.buttonText}
-                                            </a>
                                         </div>
                                         ` : ''}
                                     </td>
@@ -681,13 +614,6 @@ function generateOffsetLayout(topics) {
                 <p style="color: #333333; font-size: 14px; font-weight: 400; margin: 0; line-height: 1.6;">${topic.description}</p>
             </div>
             ` : ''}
-            ${topic.buttonText && topic.buttonUrl ? `
-            <div style="text-align: left; margin-top: 15px;">
-                <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                    ${topic.buttonText}
-                </a>
-            </div>
-            ` : ''}
         </td>
     `;
     
@@ -710,7 +636,7 @@ function testNewsletterGeneration(column = 'B') {
   try {
     const html = generateNewsletterHTMLFromColumn(column);
     const sheet = SpreadsheetApp.getActiveSheet();
-    const layoutStyle = sheet.getRange(column + '23').getValue() || 'Offset';
+    const layoutStyle = sheet.getRange(column + '17').getValue() || 'Offset';
     const date = sheet.getRange(column + '1').getValue();
     const title = sheet.getRange(column + '2').getValue();
     
@@ -723,228 +649,6 @@ function testNewsletterGeneration(column = 'B') {
   } catch (error) {
     console.error(`Test failed for column ${column}:`, error);
     return null;
-  }
-}
-
-/**
- * Test Google Drive to Base64 conversion specifically
- */
-function testDriveToBase64Conversion() {
-  console.log('🧪 Testing Google Drive to Base64 Conversion...');
-  
-  // Use a real public Google Drive image for testing - this is a 1x1 transparent pixel
-  const testDriveUrl = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=sharing';
-  
-  try {
-    console.log('🔄 Converting Google Drive URL to base64...');
-    const result = convertDriveImageUrl(testDriveUrl);
-    
-    if (result.startsWith('data:image/')) {
-      console.log('✅ SUCCESS: Google Drive image converted to base64');
-      console.log('📊 Base64 size:', result.length, 'characters');
-      console.log('🎨 MIME type detected:', result.split(';')[0].replace('data:', ''));
-      return { success: true, base64Result: result };
-    } else {
-      console.log('⚠️  FALLBACK: Returned direct URL instead of base64');
-      console.log('🔗 Result:', result);
-      return { success: false, message: 'Did not convert to base64', fallbackUrl: result };
-    }
-    
-  } catch (error) {
-    console.error('❌ Test failed with error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Comprehensive test for all image types and layout functionality
- */
-function testImageAndButtonSupport() {
-  console.log('🧪 Running Comprehensive Image & Button Test...');
-  
-  // Test data with different image types
-  const testData = {
-    date: new Date(),
-    title: 'Image & Button Test Newsletter',
-    subtitle: 'Testing all image types and button functionality',
-    topic1: {
-      title: 'Base64 Image Topic',
-      url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAHGArEkFgAAAABJRU5ErkJggg==',
-      text: 'This topic uses a base64 encoded image',
-      buttonText: 'Base64 Button',
-      buttonUrl: 'https://example.com/base64'
-    },
-    topic2: {
-      title: 'Google Drive Image Topic',
-      url: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=sharing',
-      description: 'This topic uses a Google Drive shared image (will be converted to base64)',
-      buttonText: 'Drive Button',
-      buttonUrl: 'https://example.com/drive'
-    },
-    topic3: {
-      title: 'Direct URL Image Topic',
-      url: 'https://via.placeholder.com/300x200/0066cc/ffffff?text=Direct+URL',
-      description: 'This topic uses a direct image URL',
-      buttonText: 'Direct Button',
-      buttonUrl: 'https://example.com/direct'
-    },
-    finalButtonUrl: 'https://example.com/final',
-    to: 'test@example.com',
-    layoutStyle: 'offset'
-  };
-  
-  try {
-    console.log('🔍 Testing image URL conversion...');
-    
-    // Test base64 image handling
-    const base64Result = convertDriveImageUrl(testData.topic1.url);
-    console.log('✅ Base64 image processing:', base64Result.startsWith('data:image/') ? 'PASSED' : 'FAILED');
-    
-    // Test Google Drive URL conversion to base64
-    console.log('⏳ Testing Google Drive to Base64 conversion (may take a moment)...');
-    const driveResult = convertDriveImageUrl(testData.topic2.url);
-    console.log('✅ Google Drive conversion result:', driveResult.startsWith('data:image/') ? 'CONVERTED TO BASE64' : 'FALLBACK URL');
-    
-    // Test direct URL passthrough
-    const directResult = convertDriveImageUrl(testData.topic3.url);
-    console.log('✅ Direct URL passthrough:', directResult === testData.topic3.url ? 'PASSED' : 'FAILED');
-    
-    console.log('🎨 Testing all layout styles...');
-    
-    // Test Offset Layout
-    testData.layoutStyle = 'offset';
-    const offsetHTML = createNewsletterHTML(testData);
-    console.log('✅ Offset layout generated, length:', offsetHTML.length);
-    
-    // Test Stacked Layout  
-    testData.layoutStyle = 'stacked';
-    const stackedHTML = createNewsletterHTML(testData);
-    console.log('✅ Stacked layout generated, length:', stackedHTML.length);
-    
-    // Test Hero Layout
-    testData.layoutStyle = 'hero';
-    const heroHTML = createNewsletterHTML(testData);
-    console.log('✅ Hero layout generated, length:', heroHTML.length);
-    
-    console.log('🎉 SUCCESS: All image types and layouts working correctly!');
-    console.log('📸 Base64 images: ✅ Supported');
-    console.log('🔄 Google Drive to Base64: ✅ Implemented');  
-    console.log('🌐 Direct URL images: ✅ Supported');
-    console.log('🎯 Individual topic buttons: ✅ Working');
-    console.log('🎨 All layouts (Stacked, Hero, Offset): ✅ Working');
-    
-    return {
-      success: true,
-      message: 'All image types and button functionality working correctly',
-      imageSupport: {
-        base64: true,
-        googleDriveToBase64: true,
-        directUrl: true
-      },
-      layoutSupport: {
-        offset: true,
-        stacked: true,
-        hero: true
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      message: 'Image or button test failed: ' + error.message
-    };
-  }
-}
-
-/**
- * Quick test for button functionality without full spreadsheet
- */
-function quickButtonTest() {
-  console.log('🧪 Running Quick Button Test...');
-  
-  const result = validateButtonStructure();
-  
-  if (result.success) {
-    console.log('🎉 SUCCESS: Button functionality is working!');
-    console.log('✅ All layouts (Stacked, Hero, Offset) render correctly');
-    console.log('✅ Individual topic buttons appear when both buttonText and buttonUrl are provided');
-    console.log('✅ Backward compatibility maintained - topics without buttons still work');
-  } else {
-    console.log('❌ FAILED:', result.message);
-  }
-  
-  return result;
-}
-
-/**
- * Validation function to test new button structure
- * @returns {Object} Test results
- */
-function validateButtonStructure() {
-  try {
-    const testData = {
-      date: new Date(),
-      title: 'Test Newsletter',
-      subtitle: 'Testing the new button structure',
-      topic1: {
-        title: 'First Topic',
-        url: 'https://example.com/image1.jpg',
-        text: 'This is the first topic description',
-        buttonText: 'Learn More',
-        buttonUrl: 'https://example.com/topic1'
-      },
-      topic2: {
-        title: 'Second Topic',
-        url: 'https://example.com/image2.jpg',
-        description: 'This is the second topic description',
-        buttonText: 'Read Article',
-        buttonUrl: 'https://example.com/topic2'
-      },
-      topic3: {
-        title: 'Third Topic',
-        url: 'https://example.com/image3.jpg',
-        description: 'This is the third topic description',
-        buttonText: 'Watch Video',
-        buttonUrl: 'https://example.com/topic3'
-      },
-      finalButtonUrl: 'https://example.com/final',
-      to: 'test@example.com',
-      layoutStyle: 'offset'
-    };
-    
-    console.log('Testing HTML generation...');
-    const html = createNewsletterHTML(testData);
-    console.log('✅ Newsletter HTML generated successfully, length:', html.length);
-    
-    console.log('Testing all three layouts...');
-    testData.layoutStyle = 'stacked';
-    const stackedHTML = createNewsletterHTML(testData);
-    console.log('✅ Stacked layout generated, length:', stackedHTML.length);
-    
-    testData.layoutStyle = 'hero';
-    const heroHTML = createNewsletterHTML(testData);
-    console.log('✅ Hero layout generated, length:', heroHTML.length);
-    
-    testData.layoutStyle = 'offset';
-    const offsetHTML = createNewsletterHTML(testData);
-    console.log('✅ Offset layout generated, length:', offsetHTML.length);
-    
-    return {
-      success: true,
-      message: 'All tests passed! New button structure working correctly.',
-      htmlGeneration: true,
-      layoutsWorking: true
-    };
-    
-  } catch (error) {
-    console.error('Validation failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      message: 'Validation failed: ' + error.message
-    };
   }
 }
 
