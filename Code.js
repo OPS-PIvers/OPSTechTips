@@ -106,24 +106,33 @@ function createColumnPickerDialog(action) {
         .btn { background-color: #2d3f89; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
         .btn:hover { background-color: #1d2a5d; }
         .btn-cancel { background-color: #666666; }
+        .loader { display: none; color: #666; font-style: italic; margin-top: 10px; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        #html-container { margin-top: 20px; }
+        #html-output { width: 100%; height: 150px; margin-bottom: 10px; }
       </style>
     </head>
     <body>
-      <h3>Select Newsletter to ${action.charAt(0).toUpperCase() + action.slice(1)}:</h3>
-      <form>
-        ${options.map(opt => `
-          <div class="option">
-            <label>
-              <input type="radio" name="column" value="${opt.column}"> 
-              <strong>${opt.date}</strong><br>
-              <small>${opt.title}</small>
-            </label>
-          </div>
-        `).join('')}
-      </form>
-      <br>
-      <button class="btn" onclick="executeAction()">${action.charAt(0).toUpperCase() + action.slice(1)}</button>
-      <button class="btn btn-cancel" onclick="google.script.host.close()">Cancel</button>
+      <div id="main-content">
+        <h3>Select Newsletter to ${action.charAt(0).toUpperCase() + action.slice(1)}:</h3>
+        <form>
+          ${options.map(opt => `
+            <div class="option">
+              <label>
+                <input type="radio" name="column" value="${opt.column}"> 
+                <strong>${opt.date}</strong><br>
+                <small>${opt.title}</small>
+              </label>
+            </div>
+          `).join('')}
+        </form>
+        <br>
+        <div id="button-container">
+          <button id="action-btn" class="btn" onclick="executeAction()">${action.charAt(0).toUpperCase() + action.slice(1)}</button>
+          <button id="cancel-btn" class="btn btn-cancel" onclick="google.script.host.close()">Cancel</button>
+        </div>
+        <div id="loader" class="loader">Processing... Please wait.</div>
+      </div>
       
       <script>
         function executeAction() {
@@ -132,9 +141,38 @@ function createColumnPickerDialog(action) {
             alert('Please select a newsletter to ${action}.');
             return;
           }
+
+          const actionBtn = document.getElementById('action-btn');
+          const cancelBtn = document.getElementById('cancel-btn');
+          const loader = document.getElementById('loader');
+
+          actionBtn.disabled = true;
+          cancelBtn.disabled = true;
+          loader.style.display = 'block';
           
           const column = selected.value;
           const action = '${action}';
+
+          function restoreButtons() {
+            actionBtn.disabled = false;
+            cancelBtn.disabled = false;
+            loader.style.display = 'none';
+          }
+
+          function showGeneratedHTML(html) {
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = '<h3>Generated HTML</h3>' +
+              '<textarea id="html-output">' + html.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea>' +
+              '<button class="btn" onclick="copyHtml()">Copy HTML</button>' +
+              '<button class="btn btn-cancel" onclick="google.script.host.close()">Close</button>';
+          }
+
+          window.copyHtml = function() {
+            const htmlOutput = document.getElementById('html-output');
+            htmlOutput.select();
+            document.execCommand('copy');
+            alert('HTML copied to clipboard!');
+          }
           
           if (action === 'send') {
             google.script.run
@@ -144,6 +182,7 @@ function createColumnPickerDialog(action) {
               })
               .withFailureHandler((error) => {
                 alert('Error sending newsletter: ' + error.message);
+                restoreButtons();
               })
               .sendNewsletterFromColumn(column);
           } else if (action === 'preview') {
@@ -155,16 +194,17 @@ function createColumnPickerDialog(action) {
               })
               .withFailureHandler((error) => {
                 alert('Error generating preview: ' + error.message);
+                restoreButtons();
               })
               .generateNewsletterHTMLFromColumn(column);
           } else if (action === 'generate') {
             google.script.run
               .withSuccessHandler((html) => {
-                alert('HTML generated and logged. Check execution transcript for details.');
-                google.script.host.close();
+                showGeneratedHTML(html);
               })
               .withFailureHandler((error) => {
                 alert('Error generating HTML: ' + error.message);
+                restoreButtons();
               })
               .generateNewsletterHTMLFromColumn(column);
           }
