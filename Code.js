@@ -566,26 +566,63 @@ function createNewsletterHTML(data) {
     <title>${data.title || 'Newsletter'}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;600;700&display=swap');
+        
+        /* Responsive Styles */
+        @media screen and (max-width: 780px) {
+            .container {
+                width: 100% !important;
+            }
+            .content-padding {
+                padding: 20px !important;
+            }
+            .header-padding {
+                padding: 30px 20px !important;
+            }
+            .h1 {
+                font-size: 22px !important;
+            }
+            .h2 {
+                font-size: 20px !important;
+            }
+            .h3 {
+                font-size: 16px !important;
+            }
+            .p {
+                font-size: 14px !important;
+            }
+            .responsive-image img {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .responsive-cell {
+                display: block !important;
+                width: 100% !important;
+                padding: 0 0 20px 0 !important;
+            }
+            .responsive-cell-padding {
+                 padding: 0 !important;
+            }
+        }
     </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f3f3; font-family: 'Lato', Arial, sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f3f3; padding: 20px 0;">
         <tr>
             <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1);">
+                <table width="780" cellpadding="0" cellspacing="0" border="0" class="container" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1); max-width: 780px;">
                     
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); padding: 40px 30px; text-align: center;">
+                        <td class="header-padding" style="background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); padding: 40px 30px; text-align: center;">
                             ${data.date ? `<div style="color: #eaecf5; font-size: 14px; font-weight: 400; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
-                            ${data.title ? `<h1 style="color: #ffffff; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
-                            ${data.subtitle ? `<p style="color: #eaecf5; font-size: 16px; font-weight: 400; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
+                            ${data.title ? `<h1 class="h1" style="color: #ffffff; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
+                            ${data.subtitle ? `<p class="p" style="color: #eaecf5; font-size: 16px; font-weight: 400; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
                         </td>
                     </tr>
                     
                     <!-- Content -->
                     <tr>
-                        <td style="padding: 40px 30px;">
+                        <td class="content-padding" style="padding: 40px 30px;">
                             
                             ${topicHTML}
                             
@@ -594,7 +631,7 @@ function createNewsletterHTML(data) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 40px;">
                                 <tr>
                                     <td align="center" style="background: linear-gradient(135deg, #eaecf5 0%, #f3f3f3 100%); padding: 30px; border-radius: 8px;">
-                                        <h3 style="color: #2d3f89; font-size: 18px; font-weight: 600; margin: 0 0 20px 0;">Ready to Learn More?</h3>
+                                        <h3 class="h3" style="color: #2d3f89; font-size: 18px; font-weight: 600; margin: 0 0 20px 0;">Ready to Learn More?</h3>
                                         <a href="${data.finalButtonUrl}" style="display: inline-block; background: linear-gradient(135deg, #ad2122 0%, #c13435 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(173, 33, 34, 0.3);">
                                             Visit the Orono Technology Digital Learning Hub to learn more
                                         </a>
@@ -609,7 +646,7 @@ function createNewsletterHTML(data) {
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: center;">
-                            <p style="color: #eaecf5; font-size: 12px; font-weight: 400; margin: 0; line-height: 1.5;">
+                            <p class="p" style="color: #eaecf5; font-size: 12px; font-weight: 400; margin: 0; line-height: 1.5;">
                                  ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
                                 <span style="color: #4356a0;">Empowering Digital Learning and Innovation</span>
                             </p>
@@ -637,17 +674,17 @@ function generateStackedLayout(topics) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 35px;">
                                 <tr>
                                     <td>
-                                        <h2 style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
+                                        <h2 class="h2" style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
                                         
                                         ${topic.url ? `
-                                        <div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
+                                        <div class="responsive-image" style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; max-height: 300px; object-fit: cover;">
                                         </div>
                                         ` : ''}
                                         
                                         ${topic.description ? `
                                         <div style="background-color: #eaecf5; padding: 20px; border-radius: 6px; border-left: 4px solid #2d3f89;">
-                                            <div style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
+                                            <div class="p" style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
                                         </div>
                                         ` : ''}
                                         
@@ -679,17 +716,17 @@ function generateHeroLayout(topics) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 40px;">
                                 <tr>
                                     <td>
-                                        <h2 style="color: #1d2a5d; font-size: 24px; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2; text-align: center;">${heroTopic.title}</h2>
+                                        <h2 class="h2" style="color: #1d2a5d; font-size: 24px; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2; text-align: center;">${heroTopic.title}</h2>
                                         
                                         ${heroTopic.url ? `
-                                        <div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid #eaecf5;">
+                                        <div class="responsive-image" style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${heroTopic.url}" alt="${heroTopic.title}" style="width: 100%; height: auto; display: block; max-height: 350px; object-fit: cover;">
                                         </div>
                                         ` : ''}
                                         
                                         ${heroTopic.description ? `
                                         <div style="background: linear-gradient(135deg, #eaecf5 0%, #f3f3f3 100%); padding: 25px; border-radius: 8px; border-left: 4px solid #2d3f89;">
-                                            <div style="color: #333333; font-size: 16px; font-weight: 400; line-height: 1.6; text-align: center;">${heroTopic.description}</div>
+                                            <div class="p" style="color: #333333; font-size: 16px; font-weight: 400; line-height: 1.6; text-align: center;">${heroTopic.description}</div>
                                         </div>
                                         ` : ''}
                                         
@@ -715,18 +752,18 @@ function generateHeroLayout(topics) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 35px;">
                                 <tr>
                                     <!-- Left Column -->
-                                    <td width="48%" style="vertical-align: top; padding-right: ${rightTopic ? '15px' : '0'};">
-                                        <h3 style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${leftTopic.title}</h3>
+                                    <td width="48%" class="responsive-cell" style="vertical-align: top; padding-right: ${rightTopic ? '15px' : '0'};">
+                                        <h3 class="h3" style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${leftTopic.title}</h3>
                                         
                                         ${leftTopic.url ? `
-                                        <div style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
+                                        <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${leftTopic.url}" alt="${leftTopic.title}" style="width: 100%; height: auto; display: block; max-height: 200px; object-fit: cover;">
                                         </div>
                                         ` : ''}
                                         
                                         ${leftTopic.description ? `
                                         <div style="background-color: #eaecf5; padding: 15px; border-radius: 6px; border-left: 3px solid #2d3f89;">
-                                            <div style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${leftTopic.description}</div>
+                                            <div class="p" style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${leftTopic.description}</div>
                                         </div>
                                         ` : ''}
                                         
@@ -741,19 +778,19 @@ function generateHeroLayout(topics) {
                                     
                                     ${rightTopic ? `
                                     <!-- Right Column -->
-                                    <td width="4%" style="padding: 0;"></td>
-                                    <td width="48%" style="vertical-align: top; padding-left: 15px;">
-                                        <h3 style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${rightTopic.title}</h3>
+                                    <td width="4%" class="responsive-cell-padding" style="padding: 0;"></td>
+                                    <td width="48%" class="responsive-cell" style="vertical-align: top; padding-left: 15px;">
+                                        <h3 class="h3" style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${rightTopic.title}</h3>
                                         
                                         ${rightTopic.url ? `
-                                        <div style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
+                                        <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${rightTopic.url}" alt="${rightTopic.title}" style="width: 100%; height: auto; display: block; max-height: 200px; object-fit: cover;">
                                         </div>
                                         ` : ''}
                                         
                                         ${rightTopic.description ? `
                                         <div style="background-color: #eaecf5; padding: 15px; border-radius: 6px; border-left: 3px solid #2d3f89;">
-                                            <div style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${rightTopic.description}</div>
+                                            <div class="p" style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${rightTopic.description}</div>
                                         </div>
                                         ` : ''}
                                         
@@ -783,19 +820,19 @@ function generateOffsetLayout(topics) {
   return topics.map((topic, index) => {
     const isEven = index % 2 === 0;
     const imageCell = topic.url ? `
-        <td width="250" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
-            <div style="border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
-                <img src="${topic.url}" alt="${topic.title}" style="width: 250px; height: 180px; display: block; object-fit: cover;">
+        <td width="33%" class="responsive-cell" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
+            <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
+                <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; object-fit: cover;">
             </div>
         </td>
     ` : '';
     
     const contentCell = `
-        <td style="vertical-align: top; padding: 10px 0;">
-            <h2 style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
+        <td class="responsive-cell" style="vertical-align: top; padding: 10px 0;">
+            <h2 class="h2" style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
             ${topic.description ? `
             <div style="background-color: #eaecf5; padding: 18px; border-radius: 6px; border-left: 4px solid #2d3f89;">
-                <div style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
+                <div class="p" style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
             </div>
             ` : ''}
             ${topic.buttonText && topic.buttonUrl ? `
