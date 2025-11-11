@@ -457,6 +457,32 @@ function isValidBase64ImageUrl(url) {
 }
 
 /**
+ * Creates HTML for a styled button with a consistent drop shadow and fallbacks.
+ * @param {string} text The button text.
+ * @param {string} url The button URL.
+ * @param {string} fallbackColor The solid background color for older clients.
+ * @param {string} gradient The CSS gradient for modern clients.
+ * @param {string} padding The padding for the button (e.g., '10px 20px').
+ * @param {string} fontSize The font size for the button text (e.g., '14px').
+ * @returns {string} The complete HTML for the button's <a> tag.
+ */
+function createButtonHTML(text, url, fallbackColor, gradient, padding, fontSize) {
+  const style = [
+    `background-color: ${fallbackColor};`,
+    `background: ${gradient};`,
+    'color: #ffffff;',
+    'text-decoration: none;',
+    `padding: ${padding};`,
+    'border-radius: 6px;',
+    `font-size: ${fontSize};`,
+    'font-weight: 600;',
+    'box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);'
+  ].join(' ');
+
+  return `<a href="${url}" style="${style}">${text}</a>`;
+}
+
+/**
  * Creates the complete HTML newsletter
  * @param {Object} data - Newsletter data
  * @returns {string} Complete HTML newsletter
@@ -505,6 +531,10 @@ function createNewsletterHTML(data) {
     topicHTML = generateOffsetLayout(topics);
   }
   
+  const redFallback = '#ad2122';
+  const redGradient = 'linear-gradient(135deg, #ad2122 0%, #c13435 100%)';
+  const finalButtonText = 'Visit the Orono Technology Digital Learning Hub to learn more';
+
   const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -554,14 +584,14 @@ function createNewsletterHTML(data) {
     </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f3f3; font-family: 'Lato', Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f3f3; padding: 20px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #f3f3f3; padding: 20px 0;">
         <tr>
             <td align="center">
-                <table width="780" cellpadding="0" cellspacing="0" border="0" class="container" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1); max-width: 780px;">
+                <table width="780" cellpadding="0" cellspacing="0" border="0" role="presentation" class="container" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1); max-width: 780px;">
                     
                     <!-- Header -->
                     <tr>
-                        <td class="header-padding" style="background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); padding: 40px 30px; text-align: center;">
+                        <td class="header-padding" style="background-color: #2d3f89; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); padding: 40px 30px; text-align: center;">
                             ${data.date ? `<div style="color: #eaecf5; font-size: 14px; font-weight: 400; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
                             ${data.title ? `<h1 class="h1" style="color: #ffffff; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
                             ${data.subtitle ? `<p class="p" style="color: #eaecf5; font-size: 16px; font-weight: 400; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
@@ -576,13 +606,11 @@ function createNewsletterHTML(data) {
                             
                             ${data.finalButtonUrl ? `
                             <!-- Call to Action -->
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 40px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-top: 40px;">
                                 <tr>
                                     <td align="center" style="background: linear-gradient(135deg, #eaecf5 0%, #f3f3f3 100%); padding: 30px; border-radius: 8px;">
                                         <h3 class="h3" style="color: #2d3f89; font-size: 18px; font-weight: 600; margin: 0 0 20px 0;">Ready to Learn More?</h3>
-                                        <a href="${data.finalButtonUrl}" style="display: inline-block; background: linear-gradient(135deg, #ad2122 0%, #c13435 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(173, 33, 34, 0.3);">
-                                            Visit the Orono Technology Digital Learning Hub to learn more
-                                        </a>
+                                        ${createButtonHTML(finalButtonText, data.finalButtonUrl, redFallback, redGradient, '14px 32px', '16px')}
                                     </td>
                                 </tr>
                             </table>
@@ -617,16 +645,28 @@ function createNewsletterHTML(data) {
  * @returns {string} HTML for stacked layout
  */
 function generateStackedLayout(topics) {
-  return topics.map((topic, index) => `
+  const blueFallback = '#2d3f89';
+  const blueGradient = 'linear-gradient(135deg, #2d3f89 0%, #4356a0 100%)';
+  return topics.map((topic, index) => {
+    const divider = index > 0 ? `
+                            <!-- DIVIDER -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 35px;">
+                                <tr>
+                                    <td style="border-bottom: 1px solid #eaecf5;"></td>
+                                </tr>
+                            </table>
+                            ` : '';
+
+    return divider + `
                             <!-- Topic ${index + 1} - Stacked Layout -->
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 35px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <td>
                                         <h2 class="h2" style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
                                         
                                         ${topic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
-                                            <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; max-height: 300px; object-fit: cover;">
+                                            <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
                                         
@@ -638,15 +678,14 @@ function generateStackedLayout(topics) {
                                         
                                         ${topic.buttonText && topic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${topic.buttonText}
-                                            </a>
+                                            ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '14px')}
                                         </div>
                                         ` : ''}
                                     </td>
                                 </tr>
                             </table>
-                            `).join('');
+                            `;
+  }).join('');
 }
 
 /**
@@ -656,19 +695,21 @@ function generateStackedLayout(topics) {
  */
 function generateHeroLayout(topics) {
   let html = '';
-  
+  const blueFallback = '#2d3f89';
+  const blueGradient = 'linear-gradient(135deg, #2d3f89 0%, #4356a0 100%)';
+
   if (topics.length > 0) {
     const heroTopic = topics[0];
     html += `
                             <!-- Hero Section -->
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 40px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <td>
                                         <h2 class="h2" style="color: #1d2a5d; font-size: 24px; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2; text-align: center;">${heroTopic.title}</h2>
                                         
                                         ${heroTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid #eaecf5;">
-                                            <img src="${heroTopic.url}" alt="${heroTopic.title}" style="width: 100%; height: auto; display: block; max-height: 350px; object-fit: cover;">
+                                            <img src="${heroTopic.url}" alt="${heroTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
                                         
@@ -680,9 +721,7 @@ function generateHeroLayout(topics) {
                                         
                                         ${heroTopic.buttonText && heroTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 20px;">
-                                            <a href="${heroTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${heroTopic.buttonText}
-                                            </a>
+                                            ${createButtonHTML(heroTopic.buttonText, heroTopic.buttonUrl, blueFallback, blueGradient, '12px 24px', '16px')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -692,12 +731,22 @@ function generateHeroLayout(topics) {
   }
   
   if (topics.length > 1) {
+    // Add a divider between the hero and the columns
+    html += `
+                            <!-- DIVIDER -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin: 40px 0;">
+                                <tr>
+                                    <td style="border-bottom: 1px solid #eaecf5;"></td>
+                                </tr>
+                            </table>
+                            `;
+
     const leftTopic = topics[1];
     const rightTopic = topics.length > 2 ? topics[2] : null;
     
     html += `
                             <!-- Two Column Section -->
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 35px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <!-- Left Column -->
                                     <td width="48%" class="responsive-cell" style="vertical-align: top; padding-right: ${rightTopic ? '15px' : '0'};">
@@ -705,7 +754,7 @@ function generateHeroLayout(topics) {
                                         
                                         ${leftTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
-                                            <img src="${leftTopic.url}" alt="${leftTopic.title}" style="width: 100%; height: auto; display: block; max-height: 200px; object-fit: cover;">
+                                            <img src="${leftTopic.url}" alt="${leftTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
                                         
@@ -717,9 +766,7 @@ function generateHeroLayout(topics) {
                                         
                                         ${leftTopic.buttonText && leftTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            <a href="${leftTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${leftTopic.buttonText}
-                                            </a>
+                                            ${createButtonHTML(leftTopic.buttonText, leftTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '12px')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -732,7 +779,7 @@ function generateHeroLayout(topics) {
                                         
                                         ${rightTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
-                                            <img src="${rightTopic.url}" alt="${rightTopic.title}" style="width: 100%; height: auto; display: block; max-height: 200px; object-fit: cover;">
+                                            <img src="${rightTopic.url}" alt="${rightTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
                                         
@@ -744,9 +791,7 @@ function generateHeroLayout(topics) {
                                         
                                         ${rightTopic.buttonText && rightTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            <a href="${rightTopic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                                                ${rightTopic.buttonText}
-                                            </a>
+                                            ${createButtonHTML(rightTopic.buttonText, rightTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '12px')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -765,12 +810,23 @@ function generateHeroLayout(topics) {
  * @returns {string} HTML for offset layout
  */
 function generateOffsetLayout(topics) {
+  const blueFallback = '#2d3f89';
+  const blueGradient = 'linear-gradient(135deg, #2d3f89 0%, #4356a0 100%)';
   return topics.map((topic, index) => {
+    const divider = index > 0 ? `
+                            <!-- DIVIDER -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 35px;">
+                                <tr>
+                                    <td style="border-bottom: 1px solid #eaecf5;"></td>
+                                </tr>
+                            </table>
+                            ` : '';
+
     const isEven = index % 2 === 0;
     const imageCell = topic.url ? `
         <td width="33%" class="responsive-cell" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
             <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
-                <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; object-fit: cover;">
+                <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block;">
             </div>
         </td>
     ` : '';
@@ -785,17 +841,15 @@ function generateOffsetLayout(topics) {
             ` : ''}
             ${topic.buttonText && topic.buttonUrl ? `
             <div style="text-align: center; margin-top: 15px;">
-                <a href="${topic.buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(45, 63, 137, 0.3);">
-                    ${topic.buttonText}
-                </a>
+                ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '14px')}
             </div>
             ` : ''}
         </td>
     `;
     
-    return `
+    return divider + `
                             <!-- Topic ${index + 1} - Offset Layout -->
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 35px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     ${isEven ? imageCell + contentCell : contentCell + imageCell}
                                 </tr>
@@ -1064,64 +1118,55 @@ function convertRichTextToHtml(richTextValue) {
     if (!text) return '';
     
     const textRuns = richTextValue.getRuns();
-    let htmlContent = '';
+    let contentWithTags = '';
     
+    // First, apply inline formatting (bold, italic)
     for (const run of textRuns) {
       let runText = run.getText();
       const textStyle = run.getTextStyle();
       
-      // Convert line breaks to paragraph breaks
-      runText = processTextWithLineBreaks(runText);
-      
-      // Apply bold formatting
       if (textStyle.isBold()) {
         runText = `<strong>${runText}</strong>`;
       }
       
-      // Apply italic formatting  
       if (textStyle.isItalic()) {
         runText = `<em>${runText}</em>`;
       }
       
-      htmlContent += runText;
+      contentWithTags += runText;
     }
     
-    return htmlContent;
+    // Now, process the entire block for line and paragraph breaks
+    return processTextWithLineBreaks(contentWithTags);
     
   } catch (error) {
     console.error('Error converting rich text to HTML:', error);
-    // Fallback to plain text
-    return richTextValue ? richTextValue.getText() : '';
+    // Fallback to plain text, but still process line breaks
+    return processTextWithLineBreaks(richTextValue ? richTextValue.getText() : '');
   }
 }
 
 /**
- * Processes text with line breaks and converts them to HTML paragraph structure
- * @param {string} text - Input text with potential line breaks
- * @returns {string} Text with proper HTML paragraph/break structure
+ * Processes text with line breaks and converts them to HTML paragraph and line break tags.
+ * @param {string} text - Input text with potential line breaks.
+ * @returns {string} Text with proper HTML paragraph/break structure.
  */
 function processTextWithLineBreaks(text) {
   if (!text || typeof text !== 'string') return '';
-  
-  // Split by line breaks and create paragraphs
-  const lines = text.split(/\r?\n/);
-  
-  // Filter out empty lines and trim whitespace
-  const nonEmptyLines = lines
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
-  
-  if (nonEmptyLines.length === 0) return '';
-  
-  // If single line, return as-is
-  if (nonEmptyLines.length === 1) {
-    return nonEmptyLines[0];
-  }
-  
-  // Multiple lines - wrap each in paragraph tags
-  return nonEmptyLines
-    .map(line => `<p style="margin: 0 0 10px 0;">${line}</p>`)
-    .join('');
+
+  // Standardize line endings and trim whitespace from the whole block
+  let processedText = text.replace(/\r\n|\r/g, '\n').trim();
+
+  // Split into paragraphs based on double (or more) newlines
+  const paragraphs = processedText.split(/\n{2,}/);
+
+  // Process each paragraph for single newlines and wrap in <p> tags
+  return paragraphs.map(p => {
+    if (p.trim() === '') return '';
+    // Replace single newlines within a paragraph with <br>
+    const content = p.replace(/\n/g, '<br>');
+    return `<p style="margin: 0 0 10px 0;">${content}</p>`;
+  }).join('');
 }
 
 /**
