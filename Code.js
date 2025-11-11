@@ -417,82 +417,30 @@ function getNewsletterData(sheet) {
 }
 
 /**
- * Converts Google Drive sharing URL to base64 embedded image, and handles other image URL types
- * @param {string} url - Image URL (Google Drive sharing URL, base64 data URL, or direct URL)
- * @returns {string} Processed image URL (base64 for Drive images, original for others)
+ * Converts a Google Drive sharing URL into a direct image link suitable for embedding.
+ * Other URLs (direct links, data URLs) are passed through unchanged.
+ * @param {string} url The URL to process.
+ * @returns {string} The processed image URL.
  */
 function convertDriveImageUrl(url) {
-  if (!url || typeof url !== 'string') return '';
-  
-  // Handle base64 data URLs - validate and pass through
-  if (url.startsWith('data:image/')) {
-    try {
-      // Basic validation: check for proper data URL format
-      const dataUrlPattern = /^data:image\/(png|jpg|jpeg|gif|webp|svg\+xml);base64,/i;
-      if (dataUrlPattern.test(url)) {
-        return url;
-      } else {
-        console.warn('Invalid base64 image format detected:', url.substring(0, 50) + '...');
-        return url; // Return anyway - browser will handle invalid data URLs gracefully
-      }
-    } catch (error) {
-      console.error('Error processing base64 image URL:', error);
-      return url; // Return original URL as fallback
-    }
+  if (!url || typeof url !== 'string') {
+    return '';
   }
-  
-  // Handle Google Drive sharing URLs - fetch and convert to base64
+
+  // Check for a standard Google Drive sharing URL
   const drivePattern = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
   const match = url.match(drivePattern);
-  
+
   if (match && match[1]) {
-    try {
-      const fileId = match[1];
-      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      
-      console.log('Fetching Google Drive image:', fileId);
-      
-      // Fetch the image data via HTTP
-      const response = UrlFetchApp.fetch(downloadUrl, {
-        method: 'GET',
-        followRedirects: true,
-        muteHttpExceptions: true,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; Google Apps Script)'
-        }
-      });
-      
-      if (response.getResponseCode() !== 200) {
-        console.error('Failed to fetch Google Drive image:', response.getResponseCode(), response.getContentText());
-        // Fallback to direct view URL
-        return `https://drive.google.com/uc?id=${fileId}`;
-      }
-      
-      // Get the image blob and convert to base64
-      const blob = response.getBlob();
-      const base64Data = Utilities.base64Encode(blob.getBytes());
-      const mimeType = blob.getContentType();
-      
-      // Validate mime type
-      if (!mimeType || !mimeType.startsWith('image/')) {
-        console.warn('Google Drive file is not an image:', mimeType);
-        // Fallback to direct view URL
-        return `https://drive.google.com/uc?id=${fileId}`;
-      }
-      
-      const dataUrl = `data:${mimeType};base64,${base64Data}`;
-      console.log('Successfully converted Google Drive image to base64, size:', base64Data.length);
-      
-      return dataUrl;
-      
-    } catch (error) {
-      console.error('Error fetching/converting Google Drive image:', error);
-      // Fallback to direct view URL
-      return `https://drive.google.com/uc?id=${match[1]}`;
-    }
+    const fileId = match[1];
+    // Construct the direct image view URL
+    const directUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    console.log(`Converted Google Drive link to direct URL: ${directUrl}`);
+    return directUrl;
   }
-  
-  // Return other URLs unchanged (direct image URLs, etc.)
+
+  // If it's not a matching Google Drive link, return it as is.
+  // This handles direct image URLs and existing data URIs.
   return url;
 }
 
@@ -881,31 +829,31 @@ function testNewsletterGeneration(column = 'B') {
 }
 
 /**
- * Test Google Drive to Base64 conversion specifically
+ * Test function specifically for the Google Drive URL conversion.
  */
-function testDriveToBase64Conversion() {
-  console.log('🧪 Testing Google Drive to Base64 Conversion...');
-  
-  // Use a real public Google Drive image for testing - this is a 1x1 transparent pixel
-  const testDriveUrl = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=sharing';
-  
+function testDriveUrlConversion() {
+  console.log('🧪 Testing Google Drive URL Conversion...');
+
+  const testFileId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'; // A real public 1x1 pixel
+  const testDriveUrl = `https://drive.google.com/file/d/${testFileId}/view?usp=sharing`;
+  const expectedUrl = `https://drive.google.com/uc?export=view&id=${testFileId}`;
+
   try {
-    console.log('🔄 Converting Google Drive URL to base64...');
+    console.log(`🔄 Converting URL: ${testDriveUrl}`);
     const result = convertDriveImageUrl(testDriveUrl);
-    
-    if (result.startsWith('data:image/')) {
-      console.log('✅ SUCCESS: Google Drive image converted to base64');
-      console.log('📊 Base64 size:', result.length, 'characters');
-      console.log('🎨 MIME type detected:', result.split(';')[0].replace('data:', ''));
-      return { success: true, base64Result: result };
+
+    if (result === expectedUrl) {
+      console.log('✅ SUCCESS: Google Drive URL correctly converted.');
+      console.log(`🔗 Result: ${result}`);
+      return { success: true, convertedUrl: result };
     } else {
-      console.log('⚠️  FALLBACK: Returned direct URL instead of base64');
-      console.log('🔗 Result:', result);
-      return { success: false, message: 'Did not convert to base64', fallbackUrl: result };
+      console.error('❌ FAILED: URL did not convert as expected.');
+      console.log(`Expected: ${expectedUrl}`);
+      console.log(`Received: ${result}`);
+      return { success: false, message: 'URL did not convert as expected', expected: expectedUrl, received: result };
     }
-    
   } catch (error) {
-    console.error('❌ Test failed with error:', error);
+    console.error('❌ Test failed with an error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -931,7 +879,7 @@ function testImageAndButtonSupport() {
     topic2: {
       title: 'Google Drive Image Topic',
       url: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=sharing',
-      description: 'This topic uses a Google Drive shared image (will be converted to base64)',
+      description: 'This topic uses a Google Drive shared image (will be converted to a direct link)',
       buttonText: 'Drive Button',
       buttonUrl: 'https://example.com/drive'
     },
@@ -950,14 +898,15 @@ function testImageAndButtonSupport() {
   try {
     console.log('🔍 Testing image URL conversion...');
     
-    // Test base64 image handling
+    // Test base64 image handling (should pass through)
     const base64Result = convertDriveImageUrl(testData.topic1.url);
     console.log('✅ Base64 image processing:', base64Result.startsWith('data:image/') ? 'PASSED' : 'FAILED');
     
-    // Test Google Drive URL conversion to base64
-    console.log('⏳ Testing Google Drive to Base64 conversion (may take a moment)...');
+    // Test Google Drive URL conversion to direct link
+    console.log('⏳ Testing Google Drive URL conversion...');
     const driveResult = convertDriveImageUrl(testData.topic2.url);
-    console.log('✅ Google Drive conversion result:', driveResult.startsWith('data:image/') ? 'CONVERTED TO BASE64' : 'FALLBACK URL');
+    const isConvertedCorrectly = driveResult.startsWith('https://drive.google.com/uc?export=view&id=');
+    console.log('✅ Google Drive conversion to direct URL:', isConvertedCorrectly ? 'PASSED' : 'FAILED');
     
     // Test direct URL passthrough
     const directResult = convertDriveImageUrl(testData.topic3.url);
@@ -981,9 +930,9 @@ function testImageAndButtonSupport() {
     console.log('✅ Hero layout generated, length:', heroHTML.length);
     
     console.log('🎉 SUCCESS: All image types and layouts working correctly!');
-    console.log('📸 Base64 images: ✅ Supported');
-    console.log('🔄 Google Drive to Base64: ✅ Implemented');  
-    console.log('🌐 Direct URL images: ✅ Supported');
+    console.log('📸 Base64 images: ✅ Supported (Passthrough)');
+    console.log('🔄 Google Drive to Direct URL: ✅ Implemented');  
+    console.log('🌐 Direct URL images: ✅ Supported (Passthrough)');
     console.log('🎯 Individual topic buttons: ✅ Working');
     console.log('🎨 All layouts (Stacked, Hero, Offset): ✅ Working');
     
@@ -992,7 +941,7 @@ function testImageAndButtonSupport() {
       message: 'All image types and button functionality working correctly',
       imageSupport: {
         base64: true,
-        googleDriveToBase64: true,
+        googleDriveToDirectUrl: true,
         directUrl: true
       },
       layoutSupport: {
