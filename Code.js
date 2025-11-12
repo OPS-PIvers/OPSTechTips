@@ -281,7 +281,7 @@ function sendNewsletterFromColumn(column) {
     }
     
     const html = createNewsletterHTML(data);
-    const subject = data.title + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
+    const subject = stripHtmlTags(data.title) + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
     
     GmailApp.sendEmail(
       data.to,
@@ -323,7 +323,7 @@ function createDraftNewsletterFromColumn(column) {
     }
     
     const html = createNewsletterHTML(data);
-    const subject = data.title + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
+    const subject = stripHtmlTags(data.title) + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
     
     GmailApp.createDraft(
       data.to,
@@ -366,24 +366,24 @@ function sendNewsletterEmail() {
 function getNewsletterDataFromColumn(sheet, column) {
   const data = {
     date: sheet.getRange(column + '1').getValue(),
-    title: getFormattedCellValue(sheet, column + '2'),
+    title: getFormattedCellValueSingleLine(sheet, column + '2'),
     subtitle: getFormattedCellValue(sheet, column + '3'),
     topic1: {
-      title: getFormattedCellValue(sheet, column + '4'),
+      title: getFormattedCellValueSingleLine(sheet, column + '4'),
       url: sheet.getRange(column + '5').getValue(),
       text: getFormattedCellValue(sheet, column + '6'),
       buttonText: sheet.getRange(column + '7').getValue(),
       buttonUrl: sheet.getRange(column + '8').getValue()
     },
     topic2: {
-      title: getFormattedCellValue(sheet, column + '9'),
+      title: getFormattedCellValueSingleLine(sheet, column + '9'),
       url: sheet.getRange(column + '10').getValue(),
       description: getFormattedCellValue(sheet, column + '11'),
       buttonText: sheet.getRange(column + '12').getValue(),
       buttonUrl: sheet.getRange(column + '13').getValue()
     },
     topic3: {
-      title: getFormattedCellValue(sheet, column + '14'),
+      title: getFormattedCellValueSingleLine(sheet, column + '14'),
       url: sheet.getRange(column + '15').getValue(),
       description: getFormattedCellValue(sheet, column + '16'),
       buttonText: sheet.getRange(column + '17').getValue(),
@@ -463,7 +463,7 @@ function isValidBase64ImageUrl(url) {
  * @param {string} fallbackColor The solid background color for older clients.
  * @param {string} gradient The CSS gradient for modern clients.
  * @param {string} padding The padding for the button (e.g., '10px 20px').
- * @param {string} fontSize The font size for the button text (e.g., '14px').
+ * @param {string} fontSize The font size for the button text (e.g., '14pt').
  * @returns {string} The complete HTML for the button's <a> tag.
  */
 function createButtonHTML(text, url, fallbackColor, gradient, padding, fontSize) {
@@ -476,6 +476,8 @@ function createButtonHTML(text, url, fallbackColor, gradient, padding, fontSize)
     'border-radius: 6px;',
     `font-size: ${fontSize};`,
     'font-weight: 600;',
+    'font-family: Lexend, Arial, sans-serif;',
+    'display: inline-block;',
     'box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);'
   ].join(' ');
 
@@ -489,7 +491,7 @@ function createButtonHTML(text, url, fallbackColor, gradient, padding, fontSize)
  */
 function createNewsletterHTML(data) {
   const topics = [];
-  
+
   if (data.topic1.title && data.topic1.url) {
     topics.push({
       title: data.topic1.title,
@@ -499,7 +501,7 @@ function createNewsletterHTML(data) {
       buttonUrl: data.topic1.buttonUrl
     });
   }
-  
+
   if (data.topic2.title && data.topic2.url) {
     topics.push({
       title: data.topic2.title,
@@ -509,7 +511,7 @@ function createNewsletterHTML(data) {
       buttonUrl: data.topic2.buttonUrl
     });
   }
-  
+
   if (data.topic3.title && data.topic3.url) {
     topics.push({
       title: data.topic3.title,
@@ -519,9 +521,9 @@ function createNewsletterHTML(data) {
       buttonUrl: data.topic3.buttonUrl
     });
   }
-  
-  const layoutStyle = data.layoutStyle ? data.layoutStyle.toLowerCase() : 'offset';
-  
+
+  const layoutStyle = data.layoutStyle ? data.layoutStyle.trim().toLowerCase() : 'offset';
+
   let topicHTML;
   if (layoutStyle === 'stacked') {
     topicHTML = generateStackedLayout(topics);
@@ -530,10 +532,26 @@ function createNewsletterHTML(data) {
   } else {
     topicHTML = generateOffsetLayout(topics);
   }
-  
+
   const redFallback = '#ad2122';
   const redGradient = 'linear-gradient(135deg, #ad2122 0%, #c13435 100%)';
   const finalButtonText = 'Visit the Orono Technology Digital Learning Hub to learn more';
+
+  // Get logos from Config sheet
+  const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Config');
+  let mainLogo = '';
+  let secondaryLogo = '';
+
+  if (configSheet) {
+    try {
+      mainLogo = configSheet.getRange('A2').getValue() || '';
+      secondaryLogo = configSheet.getRange('B2').getValue() || '';
+      mainLogo = mainLogo ? convertDriveImageUrl(mainLogo.toString()) : '';
+      secondaryLogo = secondaryLogo ? convertDriveImageUrl(secondaryLogo.toString()) : '';
+    } catch (e) {
+      console.error('Error retrieving logos from Config sheet:', e);
+    }
+  }
 
   const html = `
 <!DOCTYPE html>
@@ -541,11 +559,25 @@ function createNewsletterHTML(data) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>${data.title || 'Newsletter'}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;600;700&display=swap');
-        
-        /* Responsive Styles */
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap');
+
+        /* Gmail-compatible base styles */
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: Roboto, Arial, sans-serif !important;
+            font-size: 11pt !important;
+            color: #666666 !important;
+        }
+
+        h1 { font-family: Lexend, Arial, sans-serif !important; }
+        h2 { font-family: Lexend, Arial, sans-serif !important; }
+        h3 { font-family: Lexend, Arial, sans-serif !important; }
+
+        /* Mobile fallback styles (Gmail may strip these, but provide for email clients that support them) */
         @media screen and (max-width: 780px) {
             .container {
                 width: 100% !important;
@@ -557,16 +589,16 @@ function createNewsletterHTML(data) {
                 padding: 30px 20px !important;
             }
             .h1 {
-                font-size: 22px !important;
+                font-size: 24pt !important;
             }
             .h2 {
-                font-size: 20px !important;
+                font-size: 18pt !important;
             }
             .h3 {
-                font-size: 16px !important;
+                font-size: 14pt !important;
             }
             .p {
-                font-size: 14px !important;
+                font-size: 10pt !important;
             }
             .responsive-image img {
                 width: 100% !important;
@@ -583,18 +615,22 @@ function createNewsletterHTML(data) {
         }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f3f3; font-family: 'Lato', Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: #f3f3f3; font-family: Roboto, Arial, sans-serif; font-size: 11pt; color: #666666;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #f3f3f3; padding: 20px 0;">
         <tr>
             <td align="center">
-                <table width="780" cellpadding="0" cellspacing="0" border="0" role="presentation" class="container" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1); max-width: 780px;">
-                    
+                <table width="780" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 780px;">
+                    <tr>
+                        <td style="padding: 0;">
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" class="container" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1);">
+
                     <!-- Header -->
                     <tr>
                         <td class="header-padding" style="background-color: #2d3f89; background: linear-gradient(135deg, #2d3f89 0%, #4356a0 100%); padding: 40px 30px; text-align: center;">
-                            ${data.date ? `<div style="color: #eaecf5; font-size: 14px; font-weight: 400; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
-                            ${data.title ? `<h1 class="h1" style="color: #ffffff; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
-                            ${data.subtitle ? `<p class="p" style="color: #eaecf5; font-size: 16px; font-weight: 400; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
+                            ${mainLogo ? `<div style="margin-bottom: 20px;"><img src="${mainLogo}" alt="Orono Technology Logo" style="max-width: 200px; height: auto; display: inline-block;"></div>` : ''}
+                            ${data.date ? `<div style="color: #eaecf5; font-size: 11pt; font-weight: 400; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-family: Roboto, Arial, sans-serif;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
+                            ${data.title ? `<h1 class="h1" style="font-family: Lexend, Arial, sans-serif; color: #ffffff; font-size: 32pt; font-weight: 700; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
+                            ${data.subtitle ? `<p class="p" style="color: #eaecf5; font-size: 14pt; font-weight: 400; margin: 0; line-height: 1.4; font-family: Roboto, Arial, sans-serif;">${data.subtitle}</p>` : ''}
                         </td>
                     </tr>
                     
@@ -609,8 +645,8 @@ function createNewsletterHTML(data) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-top: 40px;">
                                 <tr>
                                     <td align="center" style="background: linear-gradient(135deg, #eaecf5 0%, #f3f3f3 100%); padding: 30px; border-radius: 8px;">
-                                        <h3 class="h3" style="color: #2d3f89; font-size: 18px; font-weight: 600; margin: 0 0 20px 0;">Ready to Learn More?</h3>
-                                        ${createButtonHTML(finalButtonText, data.finalButtonUrl, redFallback, redGradient, '14px 32px', '16px')}
+                                        <h3 class="h3" style="font-family: Lexend, Arial, sans-serif; color: #2d3f89; font-size: 18pt; font-weight: 600; margin: 0 0 20px 0;">Ready to Learn More?</h3>
+                                        ${createButtonHTML(finalButtonText, data.finalButtonUrl, redFallback, redGradient, '14px 32px', '14pt')}
                                     </td>
                                 </tr>
                             </table>
@@ -621,14 +657,18 @@ function createNewsletterHTML(data) {
                     
                     <!-- Footer -->
                     <tr>
-                        <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: center;">
-                            <p class="p" style="color: #eaecf5; font-size: 12px; font-weight: 400; margin: 0; line-height: 1.5;">
+                        <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: right; position: relative;">
+                            ${secondaryLogo ? `<img src="${secondaryLogo}" alt="Orono Technology Icon" style="max-width: 60px; height: auto; margin-bottom: 15px;">` : ''}
+                            <p class="p" style="color: #eaecf5; font-size: 10pt; font-weight: 400; margin: 0; line-height: 1.5; font-family: Roboto, Arial, sans-serif;">
                                  ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
                                 <span style="color: #4356a0;">Empowering Digital Learning and Innovation</span>
                             </p>
                         </td>
                     </tr>
                     
+                </table>
+                        </td>
+                    </tr>
                 </table>
             </td>
         </tr>
@@ -662,23 +702,23 @@ function generateStackedLayout(topics) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <td>
-                                        <h2 class="h2" style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
-                                        
+                                        <h2 class="h2" style="font-family: Lexend, Arial, sans-serif; color: #1d2a5d; font-size: 24pt; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
+
                                         ${topic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${topic.description ? `
                                         <div style="background-color: #eaecf5; padding: 20px; border-radius: 6px; border-left: 4px solid #2d3f89;">
-                                            <div class="p" style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
+                                            <div class="p" style="color: #666666; font-size: 11pt; font-weight: 400; line-height: 1.6; font-family: Roboto, Arial, sans-serif;">${topic.description}</div>
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${topic.buttonText && topic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '14px')}
+                                            ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '11pt')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -705,23 +745,23 @@ function generateHeroLayout(topics) {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <td>
-                                        <h2 class="h2" style="color: #1d2a5d; font-size: 24px; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2; text-align: center;">${heroTopic.title}</h2>
-                                        
+                                        <h2 class="h2" style="font-family: Lexend, Arial, sans-serif; color: #1d2a5d; font-size: 24pt; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2; text-align: center;">${heroTopic.title}</h2>
+
                                         ${heroTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${heroTopic.url}" alt="${heroTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${heroTopic.description ? `
                                         <div style="background: linear-gradient(135deg, #eaecf5 0%, #f3f3f3 100%); padding: 25px; border-radius: 8px; border-left: 4px solid #2d3f89;">
-                                            <div class="p" style="color: #333333; font-size: 16px; font-weight: 400; line-height: 1.6; text-align: center;">${heroTopic.description}</div>
+                                            <div class="p" style="color: #666666; font-size: 11pt; font-weight: 400; line-height: 1.6; text-align: center; font-family: Roboto, Arial, sans-serif;">${heroTopic.description}</div>
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${heroTopic.buttonText && heroTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 20px;">
-                                            ${createButtonHTML(heroTopic.buttonText, heroTopic.buttonUrl, blueFallback, blueGradient, '12px 24px', '16px')}
+                                            ${createButtonHTML(heroTopic.buttonText, heroTopic.buttonUrl, blueFallback, blueGradient, '12px 24px', '12pt')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -743,55 +783,55 @@ function generateHeroLayout(topics) {
 
     const leftTopic = topics[1];
     const rightTopic = topics.length > 2 ? topics[2] : null;
-    
+
     html += `
                             <!-- Two Column Section -->
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                                 <tr>
                                     <!-- Left Column -->
                                     <td width="48%" class="responsive-cell" style="vertical-align: top; padding-right: ${rightTopic ? '15px' : '0'};">
-                                        <h3 class="h3" style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${leftTopic.title}</h3>
-                                        
+                                        <h3 class="h3" style="font-family: Lexend, Arial, sans-serif; color: #1d2a5d; font-size: 18pt; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${leftTopic.title}</h3>
+
                                         ${leftTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${leftTopic.url}" alt="${leftTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${leftTopic.description ? `
                                         <div style="background-color: #eaecf5; padding: 15px; border-radius: 6px; border-left: 3px solid #2d3f89;">
-                                            <div class="p" style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${leftTopic.description}</div>
+                                            <div class="p" style="color: #666666; font-size: 11pt; font-weight: 400; line-height: 1.5; font-family: Roboto, Arial, sans-serif;">${leftTopic.description}</div>
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${leftTopic.buttonText && leftTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            ${createButtonHTML(leftTopic.buttonText, leftTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '12px')}
+                                            ${createButtonHTML(leftTopic.buttonText, leftTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '10pt')}
                                         </div>
                                         ` : ''}
                                     </td>
-                                    
+
                                     ${rightTopic ? `
                                     <!-- Right Column -->
                                     <td width="4%" class="responsive-cell-padding" style="padding: 0;"></td>
                                     <td width="48%" class="responsive-cell" style="vertical-align: top; padding-left: 15px;">
-                                        <h3 class="h3" style="color: #1d2a5d; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${rightTopic.title}</h3>
-                                        
+                                        <h3 class="h3" style="font-family: Lexend, Arial, sans-serif; color: #1d2a5d; font-size: 18pt; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${rightTopic.title}</h3>
+
                                         ${rightTopic.url ? `
                                         <div class="responsive-image" style="margin-bottom: 15px; border-radius: 6px; overflow: hidden; border: 1px solid #eaecf5;">
                                             <img src="${rightTopic.url}" alt="${rightTopic.title}" style="width: 100%; height: auto; display: block;">
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${rightTopic.description ? `
                                         <div style="background-color: #eaecf5; padding: 15px; border-radius: 6px; border-left: 3px solid #2d3f89;">
-                                            <div class="p" style="color: #333333; font-size: 13px; font-weight: 400; line-height: 1.5;">${rightTopic.description}</div>
+                                            <div class="p" style="color: #666666; font-size: 11pt; font-weight: 400; line-height: 1.5; font-family: Roboto, Arial, sans-serif;">${rightTopic.description}</div>
                                         </div>
                                         ` : ''}
-                                        
+
                                         ${rightTopic.buttonText && rightTopic.buttonUrl ? `
                                         <div style="text-align: center; margin-top: 15px;">
-                                            ${createButtonHTML(rightTopic.buttonText, rightTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '12px')}
+                                            ${createButtonHTML(rightTopic.buttonText, rightTopic.buttonUrl, blueFallback, blueGradient, '8px 16px', '10pt')}
                                         </div>
                                         ` : ''}
                                     </td>
@@ -830,23 +870,23 @@ function generateOffsetLayout(topics) {
             </div>
         </td>
     ` : '';
-    
+
     const contentCell = `
         <td class="responsive-cell" style="vertical-align: top; padding: 10px 0;">
-            <h2 class="h2" style="color: #1d2a5d; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
+            <h2 class="h2" style="font-family: Lexend, Arial, sans-serif; color: #1d2a5d; font-size: 24pt; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h2>
             ${topic.description ? `
             <div style="background-color: #eaecf5; padding: 18px; border-radius: 6px; border-left: 4px solid #2d3f89;">
-                <div class="p" style="color: #333333; font-size: 14px; font-weight: 400; line-height: 1.6;">${topic.description}</div>
+                <div class="p" style="color: #666666; font-size: 11pt; font-weight: 400; line-height: 1.6; font-family: Roboto, Arial, sans-serif;">${topic.description}</div>
             </div>
             ` : ''}
             ${topic.buttonText && topic.buttonUrl ? `
             <div style="text-align: center; margin-top: 15px;">
-                ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '14px')}
+                ${createButtonHTML(topic.buttonText, topic.buttonUrl, blueFallback, blueGradient, '10px 20px', '11pt')}
             </div>
             ` : ''}
         </td>
     `;
-    
+
     return divider + `
                             <!-- Topic ${index + 1} - Offset Layout -->
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
@@ -1106,6 +1146,76 @@ function validateButtonStructure() {
 }
 
 /**
+ * Converts rich text from Google Sheets to HTML for single-line content
+ * @param {GoogleAppsScript.Spreadsheet.RichTextValue} richTextValue - Rich text from spreadsheet
+ * @returns {string} HTML formatted text
+ */
+function convertRichTextToHtmlSingleLine(richTextValue) {
+  if (!richTextValue) return '';
+  
+  try {
+    const text = richTextValue.getText();
+    if (!text) return '';
+    
+    const textRuns = richTextValue.getRuns();
+    let contentWithTags = '';
+    
+    // First, apply inline formatting (bold, italic)
+    for (const run of textRuns) {
+      let runText = run.getText();
+      const textStyle = run.getTextStyle();
+      
+      if (textStyle.isBold()) {
+        runText = `<strong>${runText}</strong>`;
+      }
+      
+      if (textStyle.isItalic()) {
+        runText = `<em>${runText}</em>`;
+      }
+      
+      contentWithTags += runText;
+    }
+    
+    return contentWithTags.replace(/\n/g, ' '); // Replace newlines with spaces for single line content
+    
+  } catch (error) {
+    console.error('Error converting rich text to HTML:', error);
+    return richTextValue ? richTextValue.getText() : '';
+  }
+}
+
+/**
+ * Gets formatted text from a spreadsheet cell for single-line content
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The sheet to read from
+ * @param {string} cellAddress - Cell address (e.g., 'B2', 'C5')
+ * @returns {string} HTML formatted text or plain text fallback
+ */
+function getFormattedCellValueSingleLine(sheet, cellAddress) {
+  if (!sheet || !cellAddress) return '';
+  
+  try {
+    const range = sheet.getRange(cellAddress);
+    const richTextValue = range.getRichTextValue();
+    
+    if (richTextValue && richTextValue.getRuns().length > 0) {
+      return convertRichTextToHtmlSingleLine(richTextValue);
+    }
+    
+    const plainValue = range.getValue();
+    return plainValue ? plainValue.toString().replace(/\n/g, ' ') : '';
+    
+  } catch (error) {
+    console.error(`Error getting formatted cell value for ${cellAddress}:`, error);
+    try {
+      return sheet.getRange(cellAddress).getValue() || '';
+    } catch (fallbackError) {
+      console.error('Fallback getValue() also failed:', fallbackError);
+      return '';
+    }
+  }
+}
+
+/**
  * Converts rich text from Google Sheets to HTML, preserving bold, italic, and paragraph breaks
  * @param {GoogleAppsScript.Spreadsheet.RichTextValue} richTextValue - Rich text from spreadsheet
  * @returns {string} HTML formatted text
@@ -1205,6 +1315,18 @@ function getFormattedCellValue(sheet, cellAddress) {
       return '';
     }
   }
+}
+
+/**
+ * Strips HTML tags from a string
+ * @param {string} html - The string containing HTML
+ * @returns {string} The string with HTML tags removed
+ */
+function stripHtmlTags(html) {
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+  return html.replace(/<[^>]+>/g, '');
 }
 
 /**
