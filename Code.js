@@ -66,7 +66,6 @@ function createColumnPickerDialog(action) {
     const dateCell = sheet.getRange(col + '1').getValue();
     const dateStr = dateCell ? Utilities.formatDate(new Date(dateCell), Session.getScriptTimeZone(), 'MM/dd/yyyy') : 'No Date';
     const titleCell = sheet.getRange(col + '2').getValue();
-    // Truncate title for preview, but keep logic simple
     const titleStr = titleCell ? titleCell.toString().substring(0, 30) + (titleCell.toString().length > 30 ? '...' : '') : 'No Title';
     
     options.push({
@@ -180,7 +179,7 @@ function sanitizeNewsletterData(data) {
   });
 }
 
-// --- HTML GENERATION (Optimized for Gmail & Responsiveness) ---
+// --- HTML GENERATION (Optimized for Gmail, Responsiveness & Scaling) ---
 
 function createNewsletterHTML(data) {
   const topics = [data.topic1, data.topic2, data.topic3]
@@ -216,11 +215,12 @@ function createNewsletterHTML(data) {
         /* RESET */
         body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${BRAND.colors.lightBg}; }
         table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; max-width: 100%; }
         
         /* TYPOGRAPHY */
         body, td { font-family: ${BRAND.fonts.body}; font-size: 11pt; color: ${BRAND.colors.primaryGray}; }
-        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; }
+        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; word-break: break-word; }
+        p { word-break: break-word; }
         a { text-decoration: none; color: inherit; }
         
         /* RESPONSIVE */
@@ -229,11 +229,11 @@ function createNewsletterHTML(data) {
             .content-padding { padding: 20px !important; }
             .responsive-cell { display: block !important; width: 100% !important; padding: 0 0 20px 0 !important; }
             .responsive-image img { width: 100% !important; height: auto !important; }
+            .header-title { font-size: 24pt !important; }
         }
         
         /* GMAIL BLUE LINK FIX */
         a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
-        u + #body a { color: inherit; text-decoration: none; font-size: inherit; font-family: inherit; font-weight: inherit; line-height: inherit; }
     </style>
 </head>
 <body id="body" style="margin: 0; padding: 0; background-color: ${BRAND.colors.lightBg}; font-family: ${BRAND.fonts.body}; color: ${BRAND.colors.primaryGray};">
@@ -249,24 +249,27 @@ function createNewsletterHTML(data) {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: ${BRAND.colors.lightBg}; padding: 20px 0;">
         <tr>
             <td align="center">
-                <!-- UPDATED: Max-width reduced to 600px for better fit on laptops, width=100% for fluid flex behavior -->
+                <!-- CONDITIONAL WRAPPER for Outlook/Gmail Hybrid Fluidity -->
+                <!--[if (gte mso 9)|(IE)]>
+                <table width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
+                <![endif]-->
                 <table width="100%" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 600px;">
                     <tr>
                         <td>
                             <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" class="container" style="background-color: ${BRAND.colors.contentBg}; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1);">
                                 
-                                <!-- NEW: White Logo Bar -->
+                                <!-- WHITE LOGO HEADER -->
                                 <tr>
                                     <td style="background-color: #ffffff; padding: 25px 30px; text-align: center; border-bottom: 1px solid ${BRAND.colors.accentBg};">
-                                        ${logos.main ? `<img src="${logos.main}" alt="Orono Technology" width="200" style="max-width: 200px; height: auto; display: inline-block; border: 0;">` : ''}
+                                        ${logos.main ? `<img src="${logos.main}" alt="Orono Technology" width="200" style="width: 100%; max-width: 200px; height: auto; display: inline-block; border: 0;">` : ''}
                                     </td>
                                 </tr>
 
-                                <!-- UPDATED: Hero Title Section (Blue Gradient) -->
+                                <!-- HERO TITLE SECTION (Blue Gradient) -->
                                 <tr>
                                     <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
                                         ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
-                                        ${data.title ? `<h1 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 28pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
+                                        ${data.title ? `<h1 class="header-title" style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 28pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
                                         ${data.subtitle ? `<p style="color: ${BRAND.colors.accentBg}; font-size: 13pt; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
                                     </td>
                                 </tr>
@@ -281,7 +284,7 @@ function createNewsletterHTML(data) {
                                 <!-- Footer -->
                                 <tr>
                                     <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: right;">
-                                        ${logos.secondary ? `<img src="${logos.secondary}" alt="Icon" width="60" style="max-width: 60px; height: auto; margin-bottom: 15px; display: inline-block; border: 0;">` : ''}
+                                        ${logos.secondary ? `<img src="${logos.secondary}" alt="Icon" width="60" style="width: 60px; max-width: 60px; height: auto; margin-bottom: 15px; display: inline-block; border: 0;">` : ''}
                                         <p style="color: ${BRAND.colors.accentBg}; font-size: 10pt; margin: 0; line-height: 1.5;">
                                             ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
                                             <span style="color: ${BRAND.colors.secondaryBlue};">Empowering Digital Learning and Innovation</span>
@@ -292,6 +295,9 @@ function createNewsletterHTML(data) {
                         </td>
                     </tr>
                 </table>
+                <!--[if (gte mso 9)|(IE)]>
+                </td></tr></table>
+                <![endif]-->
             </td>
         </tr>
     </table>
@@ -328,7 +334,7 @@ function generateOffsetLayout(topics) {
     const imageCell = topic.url ? `
       <td width="33%" class="responsive-cell" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
           <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};">
-              <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0;">
+              <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;">
           </div>
       </td>` : '';
 
@@ -353,7 +359,7 @@ function generateStackedLayout(topics) {
           <tr>
               <td>
                   <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 15px 0;">${topic.title}</h2>
-                  ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
+                  ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
                   ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
                   ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
               </td>
@@ -372,7 +378,7 @@ function generateHeroLayout(topics) {
       <tr>
         <td>
           <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>
-          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
+          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
           ${hero.description ? `<div style="background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
           ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
         </td>
