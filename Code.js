@@ -1,15 +1,14 @@
 /**
  * Professional Newsletter Generator for Google Apps Script
- * Refactored for Brand Consistency and Maintainability
+ * Refactored for Brand Consistency, Maintainability, and Gmail Reliability
  */
 
 // --- BRAND CONFIGURATION ---
-// Centralized configuration based on brand_guidelines.md
 const BRAND = {
   colors: {
     primaryBlue: '#2d3f89',
-    primaryRed: '#ad2122',    // Used for Call to Actions
-    primaryGray: '#666666',   // Used for Body Text
+    primaryRed: '#ad2122',
+    primaryGray: '#666666',
     secondaryBlue: '#4356a0',
     secondaryRed: '#c13435',
     secondaryGray: '#999999',
@@ -49,9 +48,6 @@ function showDraftPicker() { showDialog('draft', 'Select Newsletter to Create Dr
 function showPreviewPicker() { showDialog('preview', 'Select Newsletter to Preview'); }
 function showGeneratePicker() { showDialog('generate', 'Select Newsletter to Generate'); }
 
-/**
- * Generic function to show the picker dialog
- */
 function showDialog(action, title) {
   const html = createColumnPickerDialog(action);
   const htmlOutput = HtmlService.createHtmlOutput(html)
@@ -61,10 +57,6 @@ function showDialog(action, title) {
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, title);
 }
 
-/**
- * Creates HTML dialog for column selection.
- * Attempts to load from Picker.html, falls back to internal string if file missing.
- */
 function createColumnPickerDialog(action) {
   const sheet = SpreadsheetApp.getActiveSheet();
   const columns = ['B', 'C', 'D', 'E', 'F'];
@@ -74,6 +66,7 @@ function createColumnPickerDialog(action) {
     const dateCell = sheet.getRange(col + '1').getValue();
     const dateStr = dateCell ? Utilities.formatDate(new Date(dateCell), Session.getScriptTimeZone(), 'MM/dd/yyyy') : 'No Date';
     const titleCell = sheet.getRange(col + '2').getValue();
+    // Truncate title for preview, but keep logic simple
     const titleStr = titleCell ? titleCell.toString().substring(0, 30) + (titleCell.toString().length > 30 ? '...' : '') : 'No Title';
     
     options.push({
@@ -84,15 +77,12 @@ function createColumnPickerDialog(action) {
   });
 
   try {
-    // Best Practice: Load from separate HTML file
     const template = HtmlService.createTemplateFromFile('Picker');
     template.action = action;
     template.options = options;
     return template.evaluate().getContent();
   } catch (e) {
-    // Fallback if Picker.html is not created yet
-    console.warn('Picker.html not found, using fallback HTML.');
-    return getFallbackPickerHtml(action, options);
+    return '<h3>Error: Picker.html file missing. Please create it.</h3>';
   }
 }
 
@@ -104,7 +94,6 @@ function generateNewsletterHTMLFromColumn(column) {
     const sheet = SpreadsheetApp.getActiveSheet();
     const data = getNewsletterDataFromColumn(sheet, column);
     const html = createNewsletterHTML(data);
-    console.log(`Generated HTML for Col ${column}, Length: ${html.length}`);
     return html;
   } catch (error) {
     console.error(`Error generating HTML: ${error.message}`);
@@ -112,17 +101,9 @@ function generateNewsletterHTMLFromColumn(column) {
   }
 }
 
-function sendNewsletterFromColumn(column) {
-  return processEmailAction(column, 'send');
-}
+function sendNewsletterFromColumn(column) { return processEmailAction(column, 'send'); }
+function createDraftNewsletterFromColumn(column) { return processEmailAction(column, 'draft'); }
 
-function createDraftNewsletterFromColumn(column) {
-  return processEmailAction(column, 'draft');
-}
-
-/**
- * Unified handler for sending or drafting to reduce code duplication
- */
 function processEmailAction(column, mode) {
   try {
     SpreadsheetApp.getActive().toast(`Processing ${mode}...`, 'Status', -1);
@@ -134,6 +115,7 @@ function processEmailAction(column, mode) {
     
     const html = createNewsletterHTML(data);
     const subject = stripHtmlTags(data.title) + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
+    
     const options = {
       htmlBody: html,
       cc: data.cc || '',
@@ -161,10 +143,10 @@ function processEmailAction(column, mode) {
 function getNewsletterDataFromColumn(sheet, column) {
   const getVal = (row) => sheet.getRange(column + row).getValue();
   
-  // Helper to safely get data
   const data = {
     date: getVal('1'),
-    title: getFormattedCellValueSingleLine(sheet, column + '2'),
+    // CHANGED: Used getFormattedCellValue (Multi-Line) instead of SingleLine for Title
+    title: getFormattedCellValue(sheet, column + '2'), 
     subtitle: getFormattedCellValue(sheet, column + '3'),
     topic1: extractTopic(sheet, column, 4),
     topic2: extractTopic(sheet, column, 9),
@@ -176,14 +158,14 @@ function getNewsletterDataFromColumn(sheet, column) {
     layoutStyle: getVal('23')
   };
   
-  // Security Sanitization
   sanitizeNewsletterData(data);
   return data;
 }
 
 function extractTopic(sheet, col, startRow) {
   return {
-    title: getFormattedCellValueSingleLine(sheet, col + startRow),
+    // CHANGED: Used getFormattedCellValue (Multi-Line) instead of SingleLine for Topic Titles
+    title: getFormattedCellValue(sheet, col + startRow),
     url: sheet.getRange(col + (startRow + 1)).getValue(),
     description: getFormattedCellValue(sheet, col + (startRow + 2)),
     buttonText: sheet.getRange(col + (startRow + 3)).getValue(),
@@ -197,20 +179,18 @@ function sanitizeNewsletterData(data) {
   ['topic1', 'topic2', 'topic3'].forEach(t => {
     if (data[t].title) data[t].title = sanitizeHtml(data[t].title);
     if (data[t].description) data[t].description = sanitizeHtml(data[t].description);
-    if (data[t].text) data[t].text = sanitizeHtml(data[t].text); // Handle topic1 specific field name
   });
 }
 
-// --- HTML GENERATION ---
+// --- HTML GENERATION (Optimized for Gmail) ---
 
 function createNewsletterHTML(data) {
-  // Normalize topics for loop
   const topics = [data.topic1, data.topic2, data.topic3]
     .filter(t => t.title && (t.url || t.description))
     .map(t => ({
       ...t,
       url: convertDriveImageUrl(t.url),
-      description: t.description || t.text || ''
+      description: t.description || ''
     }));
 
   const layoutStyle = (data.layoutStyle || 'offset').trim().toLowerCase();
@@ -220,29 +200,54 @@ function createNewsletterHTML(data) {
   else if (layoutStyle === 'hero') topicHTML = generateHeroLayout(topics);
   else topicHTML = generateOffsetLayout(topics);
 
-  // Get Logos safely
   const logos = getLogosFromConfig();
+  const preheaderText = data.subtitle ? stripHtmlTags(data.subtitle).substring(0, 100) : 'Orono Technology Newsletter';
 
   return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${data.title || 'Newsletter'}</title>
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>${stripHtmlTags(data.title) || 'Newsletter'}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap');
-        body { margin: 0; padding: 0; font-family: ${BRAND.fonts.body}; font-size: 11pt; color: ${BRAND.colors.primaryGray}; background-color: ${BRAND.colors.lightBg}; }
-        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; }
+        
+        /* RESET */
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${BRAND.colors.lightBg}; }
+        table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        
+        /* TYPOGRAPHY */
+        body, td { font-family: ${BRAND.fonts.body}; font-size: 11pt; color: ${BRAND.colors.primaryGray}; }
+        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; }
+        a { text-decoration: none; color: inherit; }
+        
+        /* RESPONSIVE */
         @media screen and (max-width: 780px) {
             .container { width: 100% !important; }
             .content-padding { padding: 20px !important; }
             .responsive-cell { display: block !important; width: 100% !important; padding: 0 0 20px 0 !important; }
             .responsive-image img { width: 100% !important; height: auto !important; }
         }
+        
+        /* GMAIL BLUE LINK FIX */
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+        u + #body a { color: inherit; text-decoration: none; font-size: inherit; font-family: inherit; font-weight: inherit; line-height: inherit; }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: ${BRAND.colors.lightBg}; font-family: ${BRAND.fonts.body}; color: ${BRAND.colors.primaryGray};">
+<body id="body" style="margin: 0; padding: 0; background-color: ${BRAND.colors.lightBg}; font-family: ${BRAND.fonts.body}; color: ${BRAND.colors.primaryGray};">
+    
+    <!-- PREHEADER HACK -->
+    <div style="display: none; max-height: 0px; overflow: hidden;">
+      ${preheaderText}
+    </div>
+    <div style="display: none; max-height: 0px; overflow: hidden;">
+      &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+    </div>
+
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: ${BRAND.colors.lightBg}; padding: 20px 0;">
         <tr>
             <td align="center">
@@ -253,7 +258,7 @@ function createNewsletterHTML(data) {
                                 <!-- Header -->
                                 <tr>
                                     <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
-                                        ${logos.main ? `<div style="margin-bottom: 20px;"><img src="${logos.main}" alt="Logo" style="max-width: 200px; height: auto;"></div>` : ''}
+                                        ${logos.main ? `<div style="margin-bottom: 20px;"><img src="${logos.main}" alt="Logo" width="200" style="max-width: 200px; height: auto; display: inline-block; border: 0;"></div>` : ''}
                                         ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
                                         ${data.title ? `<h1 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 32pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
                                         ${data.subtitle ? `<p style="color: ${BRAND.colors.accentBg}; font-size: 14pt; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
@@ -269,7 +274,7 @@ function createNewsletterHTML(data) {
                                 <!-- Footer -->
                                 <tr>
                                     <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: right;">
-                                        ${logos.secondary ? `<img src="${logos.secondary}" alt="Icon" style="max-width: 60px; height: auto; margin-bottom: 15px;">` : ''}
+                                        ${logos.secondary ? `<img src="${logos.secondary}" alt="Icon" width="60" style="max-width: 60px; height: auto; margin-bottom: 15px; display: inline-block; border: 0;">` : ''}
                                         <p style="color: ${BRAND.colors.accentBg}; font-size: 10pt; margin: 0; line-height: 1.5;">
                                             ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
                                             <span style="color: ${BRAND.colors.secondaryBlue};">Empowering Digital Learning and Innovation</span>
@@ -287,13 +292,13 @@ function createNewsletterHTML(data) {
 </html>`;
 }
 
-// --- LAYOUT GENERATORS (Updated to use BRAND constants) ---
+// --- LAYOUT GENERATORS ---
 
 function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', fontSize = '11pt') {
   const bgColor = style === 'red' ? BRAND.colors.primaryRed : BRAND.colors.primaryBlue;
   const gradient = style === 'red' ? BRAND.gradients.red : BRAND.gradients.blue;
   
-  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);">${text}</a>`;
+  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0;">${text}</a>`;
 }
 
 function generateCallToAction(url) {
@@ -316,7 +321,7 @@ function generateOffsetLayout(topics) {
     const imageCell = topic.url ? `
       <td width="33%" class="responsive-cell" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
           <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};">
-              <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block;">
+              <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0;">
           </div>
       </td>` : '';
 
@@ -341,7 +346,7 @@ function generateStackedLayout(topics) {
           <tr>
               <td>
                   <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 15px 0;">${topic.title}</h2>
-                  ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block;"></div>` : ''}
+                  ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
                   ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
                   ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
               </td>
@@ -360,7 +365,7 @@ function generateHeroLayout(topics) {
       <tr>
         <td>
           <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>
-          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block;"></div>` : ''}
+          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
           ${hero.description ? `<div style="background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
           ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
         </td>
@@ -369,8 +374,6 @@ function generateHeroLayout(topics) {
 
   if (topics.length > 1) {
     html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin: 40px 0;"><tr><td style="border-bottom: 1px solid ${BRAND.colors.accentBg};"></td></tr></table>`;
-    // Additional column logic here (simplified for brevity, follows same pattern)
-    // You can copy/paste the two-column logic from the original script but swap in BRAND.colors
   }
   return html;
 }
@@ -379,7 +382,7 @@ function getDividerHTML() {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 35px;"><tr><td style="border-bottom: 1px solid ${BRAND.colors.accentBg};"></td></tr></table>`;
 }
 
-// --- UTILITIES ---
+// --- UTILITIES & RICH TEXT HANDLING ---
 
 function getLogosFromConfig() {
   try {
@@ -403,15 +406,73 @@ function convertDriveImageUrl(url) {
   return match ? `https://drive.google.com/uc?export=view&id=${match[1]}` : url;
 }
 
-// Validations & Formatting (Kept original helper functions for RichText)
-function getFormattedCellValueSingleLine(sheet, cell) { return getFormattedCellValue(sheet, cell); /* Simplified for example */ }
-function getFormattedCellValue(sheet, cell) { /* Preserve existing rich text logic */ try { return sheet.getRange(cell).getValue(); } catch(e){ return ''; } }
-function stripHtmlTags(html) { return html ? html.replace(/<[^>]+>/g, '') : ''; }
-function sanitizeHtml(html) { return html; /* Preserve existing logic */ }
+// --- RESTORED RICH TEXT LOGIC ---
 
-// --- FALLBACK PICKER HTML (Used if Picker.html missing) ---
-function getFallbackPickerHtml(action, options) {
-  // This preserves your original "string-based" HTML generation as a backup
-  // Ideally, this function shouldn't be needed if Picker.html is present
-  return '<h3>Error: Picker.html file missing. Please create it.</h3>'; 
+function getFormattedCellValue(sheet, cellAddress) {
+  if (!sheet || !cellAddress) return '';
+  try {
+    const range = sheet.getRange(cellAddress);
+    const richTextValue = range.getRichTextValue();
+    
+    // If rich text exists, convert it.
+    if (richTextValue && richTextValue.getRuns().length > 0) {
+      return convertRichTextToHtml(richTextValue);
+    }
+    
+    // Fallback to plain value, but STILL process line breaks
+    const plainValue = range.getValue();
+    if (plainValue && typeof plainValue === 'string') {
+      return processTextWithLineBreaks(plainValue);
+    }
+    return plainValue ? plainValue.toString() : '';
+  } catch (error) {
+    // Double fallback
+    return sheet.getRange(cellAddress).getValue() || '';
+  }
 }
+
+function convertRichTextToHtml(richTextValue) {
+  if (!richTextValue) return '';
+  const textRuns = richTextValue.getRuns();
+  let contentWithTags = '';
+  
+  for (const run of textRuns) {
+    let runText = run.getText();
+    const textStyle = run.getTextStyle();
+    
+    // Apply Bold
+    if (textStyle.isBold()) {
+      runText = `<strong>${runText}</strong>`;
+    }
+    // Apply Italic
+    if (textStyle.isItalic()) {
+      runText = `<em>${runText}</em>`;
+    }
+    contentWithTags += runText;
+  }
+  return processTextWithLineBreaks(contentWithTags);
+}
+
+// IMPORTANT: This ensures Lists (1. Point A \n 2. Point B) are preserved as lines
+function processTextWithLineBreaks(text) {
+  if (!text || typeof text !== 'string') return '';
+
+  // 1. Normalize line endings
+  let processedText = text.replace(/\r\n|\r/g, '\n').trim();
+
+  // 2. Split into Paragraphs (Double newlines)
+  const paragraphs = processedText.split(/\n{2,}/);
+
+  // 3. Process each paragraph
+  return paragraphs.map(p => {
+    if (p.trim() === '') return '';
+    
+    // 4. Replace Single Newlines with <br> tags to preserve lists
+    const content = p.replace(/\n/g, '<br>');
+    
+    return `<p style="margin: 0 0 10px 0;">${content}</p>`;
+  }).join('');
+}
+
+function stripHtmlTags(html) { return html ? html.replace(/<[^>]+>/g, '') : ''; }
+function sanitizeHtml(html) { return html; }
