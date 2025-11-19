@@ -144,8 +144,9 @@ function getNewsletterDataFromColumn(sheet, column) {
   
   const data = {
     date: getVal('1'),
-    title: getFormattedCellValue(sheet, column + '2'), 
-    subtitle: getFormattedCellValue(sheet, column + '3'),
+    // Use 'header' mode for Titles (No <p> tags, just <br>)
+    title: getFormattedCellValue(sheet, column + '2', 'header'), 
+    subtitle: getFormattedCellValue(sheet, column + '3', 'header'),
     topic1: extractTopic(sheet, column, 4),
     topic2: extractTopic(sheet, column, 9),
     topic3: extractTopic(sheet, column, 14),
@@ -162,9 +163,11 @@ function getNewsletterDataFromColumn(sheet, column) {
 
 function extractTopic(sheet, col, startRow) {
   return {
-    title: getFormattedCellValue(sheet, col + startRow),
+    // Use 'header' mode for Topic Titles
+    title: getFormattedCellValue(sheet, col + startRow, 'header'),
     url: sheet.getRange(col + (startRow + 1)).getValue(),
-    description: getFormattedCellValue(sheet, col + (startRow + 2)),
+    // Use 'body' mode for Descriptions (Uses <p> tags for spacing)
+    description: getFormattedCellValue(sheet, col + (startRow + 2), 'body'),
     buttonText: sheet.getRange(col + (startRow + 3)).getValue(),
     buttonUrl: sheet.getRange(col + (startRow + 4)).getValue()
   };
@@ -179,7 +182,7 @@ function sanitizeNewsletterData(data) {
   });
 }
 
-// --- HTML GENERATION (Optimized for Gmail, Responsiveness & Scaling) ---
+// --- HTML GENERATION (Mobile Optimized) ---
 
 function createNewsletterHTML(data) {
   const topics = [data.topic1, data.topic2, data.topic3]
@@ -213,19 +216,19 @@ function createNewsletterHTML(data) {
         @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap');
         
         /* RESET */
-        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${BRAND.colors.lightBg}; }
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${BRAND.colors.lightBg}; min-width: 320px; }
         table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
         img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; max-width: 100%; }
         
         /* TYPOGRAPHY */
         body, td { font-family: ${BRAND.fonts.body}; font-size: 11pt; color: ${BRAND.colors.primaryGray}; }
         h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; word-break: break-word; }
-        p { word-break: break-word; }
+        p { word-break: break-word; margin: 0 0 10px 0; }
         a { text-decoration: none; color: inherit; }
         
-        /* RESPONSIVE */
+        /* RESPONSIVE MEDIA QUERIES */
         @media screen and (max-width: 600px) {
-            .container { width: 100% !important; max-width: 100% !important; }
+            .main-container { width: 100% !important; max-width: 100% !important; }
             .content-padding { padding: 20px !important; }
             .responsive-cell { display: block !important; width: 100% !important; padding: 0 0 20px 0 !important; }
             .responsive-image img { width: 100% !important; height: auto !important; }
@@ -249,11 +252,13 @@ function createNewsletterHTML(data) {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: ${BRAND.colors.lightBg}; padding: 20px 0;">
         <tr>
             <td align="center">
-                <!-- CONDITIONAL WRAPPER for Outlook/Gmail Hybrid Fluidity -->
+                <!-- Outlook Wrapper Force 600px -->
                 <!--[if (gte mso 9)|(IE)]>
                 <table width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
                 <![endif]-->
-                <table width="100%" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 600px;">
+                
+                <!-- Main Container: 600px on Desktop (fixed attribute), 100% on Mobile (via Class) -->
+                <table class="main-container" width="600" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 600px; max-width: 100%;">
                     <tr>
                         <td>
                             <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" class="container" style="background-color: ${BRAND.colors.contentBg}; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1);">
@@ -265,7 +270,7 @@ function createNewsletterHTML(data) {
                                     </td>
                                 </tr>
 
-                                <!-- HERO TITLE SECTION (Blue Gradient) -->
+                                <!-- HERO TITLE SECTION -->
                                 <tr>
                                     <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
                                         ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
@@ -419,9 +424,9 @@ function convertDriveImageUrl(url) {
   return match ? `https://drive.google.com/uc?export=view&id=${match[1]}` : url;
 }
 
-// --- RESTORED RICH TEXT LOGIC ---
+// --- RESTORED RICH TEXT LOGIC (With Headers Fix) ---
 
-function getFormattedCellValue(sheet, cellAddress) {
+function getFormattedCellValue(sheet, cellAddress, mode = 'body') {
   if (!sheet || !cellAddress) return '';
   try {
     const range = sheet.getRange(cellAddress);
@@ -429,22 +434,21 @@ function getFormattedCellValue(sheet, cellAddress) {
     
     // If rich text exists, convert it.
     if (richTextValue && richTextValue.getRuns().length > 0) {
-      return convertRichTextToHtml(richTextValue);
+      return convertRichTextToHtml(richTextValue, mode);
     }
     
     // Fallback to plain value, but STILL process line breaks
     const plainValue = range.getValue();
     if (plainValue && typeof plainValue === 'string') {
-      return processTextWithLineBreaks(plainValue);
+      return mode === 'header' ? processTextForHeaders(plainValue) : processTextForBody(plainValue);
     }
     return plainValue ? plainValue.toString() : '';
   } catch (error) {
-    // Double fallback
     return sheet.getRange(cellAddress).getValue() || '';
   }
 }
 
-function convertRichTextToHtml(richTextValue) {
+function convertRichTextToHtml(richTextValue, mode) {
   if (!richTextValue) return '';
   const textRuns = richTextValue.getRuns();
   let contentWithTags = '';
@@ -463,26 +467,27 @@ function convertRichTextToHtml(richTextValue) {
     }
     contentWithTags += runText;
   }
-  return processTextWithLineBreaks(contentWithTags);
+  return mode === 'header' ? processTextForHeaders(contentWithTags) : processTextForBody(contentWithTags);
 }
 
-// IMPORTANT: This ensures Lists (1. Point A \n 2. Point B) are preserved as lines
-function processTextWithLineBreaks(text) {
+// NEW: For Headers (Titles) - Uses <br> instead of <p> to avoid nested tags
+function processTextForHeaders(text) {
+  if (!text || typeof text !== 'string') return '';
+  // Normalize and just replace newlines with <br>
+  let processedText = text.replace(/\r\n|\r/g, '\n').trim();
+  return processedText.replace(/\n/g, '<br>');
+}
+
+// EXISTING: For Body (Descriptions) - Uses <p> for proper block formatting
+function processTextForBody(text) {
   if (!text || typeof text !== 'string') return '';
 
-  // 1. Normalize line endings
   let processedText = text.replace(/\r\n|\r/g, '\n').trim();
-
-  // 2. Split into Paragraphs (Double newlines)
   const paragraphs = processedText.split(/\n{2,}/);
 
-  // 3. Process each paragraph
   return paragraphs.map(p => {
     if (p.trim() === '') return '';
-    
-    // 4. Replace Single Newlines with <br> tags to preserve lists
     const content = p.replace(/\n/g, '<br>');
-    
     return `<p style="margin: 0 0 10px 0;">${content}</p>`;
   }).join('');
 }
