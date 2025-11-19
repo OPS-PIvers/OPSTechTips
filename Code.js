@@ -145,7 +145,6 @@ function getNewsletterDataFromColumn(sheet, column) {
   
   const data = {
     date: getVal('1'),
-    // CHANGED: Used getFormattedCellValue (Multi-Line) instead of SingleLine for Title
     title: getFormattedCellValue(sheet, column + '2'), 
     subtitle: getFormattedCellValue(sheet, column + '3'),
     topic1: extractTopic(sheet, column, 4),
@@ -164,7 +163,6 @@ function getNewsletterDataFromColumn(sheet, column) {
 
 function extractTopic(sheet, col, startRow) {
   return {
-    // CHANGED: Used getFormattedCellValue (Multi-Line) instead of SingleLine for Topic Titles
     title: getFormattedCellValue(sheet, col + startRow),
     url: sheet.getRange(col + (startRow + 1)).getValue(),
     description: getFormattedCellValue(sheet, col + (startRow + 2)),
@@ -182,7 +180,7 @@ function sanitizeNewsletterData(data) {
   });
 }
 
-// --- HTML GENERATION (Optimized for Gmail) ---
+// --- HTML GENERATION (Optimized for Gmail & Responsiveness) ---
 
 function createNewsletterHTML(data) {
   const topics = [data.topic1, data.topic2, data.topic3]
@@ -226,8 +224,8 @@ function createNewsletterHTML(data) {
         a { text-decoration: none; color: inherit; }
         
         /* RESPONSIVE */
-        @media screen and (max-width: 780px) {
-            .container { width: 100% !important; }
+        @media screen and (max-width: 600px) {
+            .container { width: 100% !important; max-width: 100% !important; }
             .content-padding { padding: 20px !important; }
             .responsive-cell { display: block !important; width: 100% !important; padding: 0 0 20px 0 !important; }
             .responsive-image img { width: 100% !important; height: auto !important; }
@@ -251,19 +249,28 @@ function createNewsletterHTML(data) {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: ${BRAND.colors.lightBg}; padding: 20px 0;">
         <tr>
             <td align="center">
-                <table width="780" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 780px;">
+                <!-- UPDATED: Max-width reduced to 600px for better fit on laptops, width=100% for fluid flex behavior -->
+                <table width="100%" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 600px;">
                     <tr>
                         <td>
                             <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" class="container" style="background-color: ${BRAND.colors.contentBg}; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(45, 63, 137, 0.1);">
-                                <!-- Header -->
+                                
+                                <!-- NEW: White Logo Bar -->
                                 <tr>
-                                    <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
-                                        ${logos.main ? `<div style="margin-bottom: 20px;"><img src="${logos.main}" alt="Logo" width="200" style="max-width: 200px; height: auto; display: inline-block; border: 0;"></div>` : ''}
-                                        ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
-                                        ${data.title ? `<h1 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 32pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
-                                        ${data.subtitle ? `<p style="color: ${BRAND.colors.accentBg}; font-size: 14pt; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
+                                    <td style="background-color: #ffffff; padding: 25px 30px; text-align: center; border-bottom: 1px solid ${BRAND.colors.accentBg};">
+                                        ${logos.main ? `<img src="${logos.main}" alt="Orono Technology" width="200" style="max-width: 200px; height: auto; display: inline-block; border: 0;">` : ''}
                                     </td>
                                 </tr>
+
+                                <!-- UPDATED: Hero Title Section (Blue Gradient) -->
+                                <tr>
+                                    <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
+                                        ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
+                                        ${data.title ? `<h1 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 28pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
+                                        ${data.subtitle ? `<p style="color: ${BRAND.colors.accentBg}; font-size: 13pt; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
+                                    </td>
+                                </tr>
+
                                 <!-- Content -->
                                 <tr>
                                     <td class="content-padding" style="padding: 40px 30px;">
