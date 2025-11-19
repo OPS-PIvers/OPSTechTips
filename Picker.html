@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: 'Roboto', Arial, sans-serif; padding: 20px; color: #333; }
+    h3 { color: #2d3f89; margin-top: 0; }
+    .option { 
+      margin: 10px 0; 
+      padding: 12px; 
+      border: 1px solid #ddd; 
+      border-radius: 6px; 
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .option:hover { background-color: #f0f4ff; border-color: #2d3f89; }
+    .option label { cursor: pointer; display: block; width: 100%; }
+    .btn { 
+      background-color: #2d3f89; 
+      color: white; 
+      padding: 10px 20px; 
+      border: none; 
+      border-radius: 5px; 
+      cursor: pointer; 
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    .btn:hover { background-color: #1d2a5d; }
+    .btn-cancel { background-color: #999; }
+    .btn:disabled { background-color: #ccc; cursor: wait; }
+    .loader { display: none; margin-top: 15px; color: #666; font-style: italic; }
+    textarea { width: 100%; height: 150px; margin: 10px 0; font-family: monospace; border-color: #ddd; }
+  </style>
+</head>
+<body>
+  <div id="main-content">
+    <h3>Select Newsletter to <?= action.charAt(0).toUpperCase() + action.slice(1) ?>:</h3>
+    
+    <form id="picker-form">
+      <? for (var i = 0; i < options.length; i++) { ?>
+        <div class="option" onclick="selectOption(this)">
+          <label>
+            <input type="radio" name="column" value="<?= options[i].column ?>"> 
+            <strong><?= options[i].date ?></strong>
+            <div style="font-size: 0.9em; color: #666; margin-top: 4px;"><?= options[i].title ?></div>
+          </label>
+        </div>
+      <? } ?>
+    </form>
+
+    <div style="margin-top: 20px;">
+      <button id="action-btn" class="btn" onclick="executeAction()"><?= action.charAt(0).toUpperCase() + action.slice(1) ?></button>
+      <button id="cancel-btn" class="btn btn-cancel" onclick="google.script.host.close()">Cancel</button>
+    </div>
+    
+    <div id="loader" class="loader">
+      Processing... This may take a moment.
+    </div>
+  </div>
+
+  <script>
+    // Helper to visually select the entire box when clicked
+    function selectOption(div) {
+      div.querySelector('input').checked = true;
+      document.querySelectorAll('.option').forEach(el => el.style.backgroundColor = '');
+      div.style.backgroundColor = '#eef2ff';
+    }
+
+    function executeAction() {
+      const selected = document.querySelector('input[name="column"]:checked');
+      if (!selected) {
+        alert('Please select a newsletter option.');
+        return;
+      }
+
+      const btn = document.getElementById('action-btn');
+      const loader = document.getElementById('loader');
+      btn.disabled = true;
+      btn.innerText = 'Processing...';
+      loader.style.display = 'block';
+
+      const column = selected.value;
+      const action = '<?= action ?>';
+
+      const successHandler = (result) => {
+        if (action === 'generate') {
+          showGeneratedHTML(result);
+        } else if (action === 'preview') {
+          const win = window.open();
+          win.document.write(result);
+          google.script.host.close();
+        } else {
+          // Send or Draft success
+          google.script.host.close();
+        }
+      };
+
+      const failureHandler = (err) => {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerText = 'Retry';
+        loader.style.display = 'none';
+      };
+
+      // Route to appropriate server-side function
+      if (action === 'send') {
+        google.script.run.withSuccessHandler(successHandler).withFailureHandler(failureHandler).sendNewsletterFromColumn(column);
+      } else if (action === 'draft') {
+        google.script.run.withSuccessHandler(successHandler).withFailureHandler(failureHandler).createDraftNewsletterFromColumn(column);
+      } else if (action === 'preview' || action === 'generate') {
+        google.script.run.withSuccessHandler(successHandler).withFailureHandler(failureHandler).generateNewsletterHTMLFromColumn(column);
+      }
+    }
+
+    function showGeneratedHTML(html) {
+      const content = document.getElementById('main-content');
+      content.innerHTML = `
+        <h3>Generated HTML</h3>
+        <textarea id="html-output" readonly></textarea>
+        <button class="btn" onclick="copyHtml()">Copy to Clipboard</button>
+        <button class="btn btn-cancel" onclick="google.script.host.close()">Close</button>
+      `;
+      document.getElementById('html-output').value = html;
+    }
+
+    function copyHtml() {
+      const output = document.getElementById('html-output');
+      output.select();
+      document.execCommand('copy');
+      alert('HTML copied!');
+    }
+  </script>
+</body>
+</html>
