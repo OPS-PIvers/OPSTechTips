@@ -160,7 +160,7 @@ function getNewsletterDataFromColumn(sheet, column) {
 
   const getVal = (rowIdx) => {
     const v = values[rowIdx - 1][0];
-    return v ?? '';
+    return v === undefined ? '' : v;
   };
 
   const getRichVal = (rowIdx) => {
@@ -471,6 +471,13 @@ function getFormattedCellValue(sheet, cellAddress, mode = 'body') {
   }
 }
 
+/**
+ * Processes pre-fetched cell data (for batch operations)
+ * @param {RichTextValue} richTextValue - The rich text value from the cell
+ * @param {*} plainValue - The plain value from the cell
+ * @param {string} mode - Processing mode ('header' or 'body')
+ * @return {string} Formatted HTML string
+ */
 function getFormattedCellValueFromData(richTextValue, plainValue, mode = 'body') {
   // If rich text exists, convert it.
   if (richTextValue && richTextValue.getRuns().length > 0) {
