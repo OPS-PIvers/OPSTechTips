@@ -140,37 +140,66 @@ function processEmailAction(column, mode) {
 // --- DATA EXTRACTION ---
 
 function getNewsletterDataFromColumn(sheet, column) {
-  const getVal = (row) => sheet.getRange(column + row).getValue();
+  // Batch read rows 1-23
+  // 1-based indices in sheet:
+  // 1: Date
+  // 2: Title
+  // 3: Subtitle
+  // 4-8: Topic 1
+  // 9-13: Topic 2
+  // 14-18: Topic 3
+  // 19: Final Button URL
+  // 20: To
+  // 21: Cc
+  // 22: Bcc
+  // 23: Layout Style
+
+  const range = sheet.getRange(`${column}1:${column}23`);
+  const values = range.getValues(); // 2D array [row][col]
+  const richTextValues = range.getRichTextValues(); // 2D array [row][col]
+
+  const getVal = (rowIdx) => {
+    const v = values[rowIdx - 1][0];
+    return v === undefined ? '' : v;
+  };
+
+  const getRichVal = (rowIdx) => {
+    const v = richTextValues[rowIdx - 1][0];
+    return v;
+  };
+
+  const getFmt = (rowIdx, mode) => {
+    const rtv = getRichVal(rowIdx);
+    const v = getVal(rowIdx);
+    return getFormattedCellValueFromData(rtv, v, mode);
+  };
+
+  const extractTopicBatch = (startRow) => {
+    return {
+      title: getFmt(startRow, 'header'),
+      url: getVal(startRow + 1),
+      description: getFmt(startRow + 2, 'body'),
+      buttonText: getVal(startRow + 3),
+      buttonUrl: getVal(startRow + 4)
+    };
+  };
   
   const data = {
-    date: getVal('1'),
-    // Use 'header' mode for Titles (No <p> tags, just <br>)
-    title: getFormattedCellValue(sheet, column + '2', 'header'), 
-    subtitle: getFormattedCellValue(sheet, column + '3', 'header'),
-    topic1: extractTopic(sheet, column, 4),
-    topic2: extractTopic(sheet, column, 9),
-    topic3: extractTopic(sheet, column, 14),
-    finalButtonUrl: getVal('19'),
-    to: getVal('20'),
-    cc: getVal('21'),
-    bcc: getVal('22'),
-    layoutStyle: getVal('23')
+    date: getVal(1),
+    title: getFmt(2, 'header'),
+    subtitle: getFmt(3, 'header'),
+    topic1: extractTopicBatch(4),
+    topic2: extractTopicBatch(9),
+    topic3: extractTopicBatch(14),
+    finalButtonUrl: getVal(19),
+    to: getVal(20),
+    cc: getVal(21),
+    bcc: getVal(22),
+    layoutStyle: getVal(23)
   };
   
   sanitizeNewsletterData(data);
   return data;
-}
-
-function extractTopic(sheet, col, startRow) {
-  return {
-    // Use 'header' mode for Topic Titles
-    title: getFormattedCellValue(sheet, col + startRow, 'header'),
-    url: sheet.getRange(col + (startRow + 1)).getValue(),
-    // Use 'body' mode for Descriptions (Uses <p> tags for spacing)
-    description: getFormattedCellValue(sheet, col + (startRow + 2), 'body'),
-    buttonText: sheet.getRange(col + (startRow + 3)).getValue(),
-    buttonUrl: sheet.getRange(col + (startRow + 4)).getValue()
-  };
 }
 
 function sanitizeNewsletterData(data) {
@@ -426,26 +455,40 @@ function convertDriveImageUrl(url) {
 
 // --- RESTORED RICH TEXT LOGIC (With Headers Fix) ---
 
+/**
+ * Kept for backward compatibility if used elsewhere,
+ * but getNewsletterDataFromColumn now uses getFormattedCellValueFromData
+ */
 function getFormattedCellValue(sheet, cellAddress, mode = 'body') {
   if (!sheet || !cellAddress) return '';
   try {
     const range = sheet.getRange(cellAddress);
     const richTextValue = range.getRichTextValue();
-    
-    // If rich text exists, convert it.
-    if (richTextValue && richTextValue.getRuns().length > 0) {
-      return convertRichTextToHtml(richTextValue, mode);
-    }
-    
-    // Fallback to plain value, but STILL process line breaks
     const plainValue = range.getValue();
-    if (plainValue && typeof plainValue === 'string') {
-      return mode === 'header' ? processTextForHeaders(plainValue) : processTextForBody(plainValue);
-    }
-    return plainValue ? plainValue.toString() : '';
+    return getFormattedCellValueFromData(richTextValue, plainValue, mode);
   } catch (error) {
     return sheet.getRange(cellAddress).getValue() || '';
   }
+}
+
+/**
+ * Processes pre-fetched cell data (for batch operations)
+ * @param {RichTextValue} richTextValue - The rich text value from the cell
+ * @param {*} plainValue - The plain value from the cell
+ * @param {string} mode - Processing mode ('header' or 'body')
+ * @return {string} Formatted HTML string
+ */
+function getFormattedCellValueFromData(richTextValue, plainValue, mode = 'body') {
+  // If rich text exists, convert it.
+  if (richTextValue && richTextValue.getRuns().length > 0) {
+    return convertRichTextToHtml(richTextValue, mode);
+  }
+
+  // Fallback to plain value, but STILL process line breaks
+  if (plainValue && typeof plainValue === 'string') {
+    return mode === 'header' ? processTextForHeaders(plainValue) : processTextForBody(plainValue);
+  }
+  return plainValue ? plainValue.toString() : '';
 }
 
 function convertRichTextToHtml(richTextValue, mode) {
