@@ -160,7 +160,7 @@ function getNewsletterDataFromColumn(sheet, column) {
 
   const getVal = (rowIdx) => {
     const v = values[rowIdx - 1][0];
-    return v === undefined ? '' : v;
+    return v ?? '';
   };
 
   const getRichVal = (rowIdx) => {
