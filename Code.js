@@ -363,7 +363,7 @@ function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', font
   // However, simpler is to just apply the padding as border.
   // e.g. padding: 10px 20px -> border-top: 10px solid color; border-right: 20px solid color...
 
-  // Let's parse the padding string roughly.
+  // Parse the padding string to set border widths for button appearance.
   // Robustly parse padding string for 1–4 values (CSS shorthand)
   const parts = padding.trim().split(/\s+/);
   let top, right, bottom, left;
