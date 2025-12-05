@@ -64,7 +64,7 @@ function createColumnPickerDialog(action) {
   
   // Batch read rows 1 (Date) and 2 (Title) for columns B-F
   const range = sheet.getRange('B1:F2');
-  const values = range.getValues(); // Returns 2D array: [ [Dates...], [Titles...] ]
+  const values = range.getValues(); // Returns 2D array: [[B1, C1, D1, E1, F1], [B2, C2, D2, E2, F2]] (row 0 = dates, row 1 = titles)
 
   columns.forEach((col, index) => {
     const dateCell = values[0][index];
