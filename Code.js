@@ -364,14 +364,28 @@ function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', font
   // e.g. padding: 10px 20px -> border-top: 10px solid color; border-right: 20px solid color...
 
   // Let's parse the padding string roughly.
-  let borderStyle = `border: ${padding.split(' ')[0] || '10px'} solid ${bgColor}`;
-  if (padding.includes(' ')) {
-     // If "10px 20px", we need to be specific.
-     const parts = padding.split(' ');
-     const v = parts[0];
-     const h = parts[1] || parts[0];
-     borderStyle = `border-top: ${v} solid ${bgColor}; border-bottom: ${v} solid ${bgColor}; border-left: ${h} solid ${bgColor}; border-right: ${h} solid ${bgColor}`;
+  // Robustly parse padding string for 1–4 values (CSS shorthand)
+  const parts = padding.trim().split(/\s+/);
+  let top, right, bottom, left;
+  if (parts.length === 1) {
+    top = right = bottom = left = parts[0];
+  } else if (parts.length === 2) {
+    top = bottom = parts[0];
+    right = left = parts[1];
+  } else if (parts.length === 3) {
+    top = parts[0];
+    right = left = parts[1];
+    bottom = parts[2];
+  } else if (parts.length === 4) {
+    top = parts[0];
+    right = parts[1];
+    bottom = parts[2];
+    left = parts[3];
+  } else {
+    // fallback: treat as all sides equal
+    top = right = bottom = left = parts[0] || '10px';
   }
+  const borderStyle = `border-top: ${top} solid ${bgColor}; border-right: ${right} solid ${bgColor}; border-bottom: ${bottom} solid ${bgColor}; border-left: ${left} solid ${bgColor}`;
 
   return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; ${borderStyle}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; mso-padding-alt: 0; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);">${text}</a>`;
 }
