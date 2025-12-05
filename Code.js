@@ -350,7 +350,30 @@ function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', font
   const bgColor = style === 'red' ? BRAND.colors.primaryRed : BRAND.colors.primaryBlue;
   const gradient = style === 'red' ? BRAND.gradients.red : BRAND.gradients.blue;
   
-  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0;">${text}</a>`;
+  // Border-based button technique: Uses thick borders on the <a> tag to simulate padding.
+  // This ensures the entire "button" area is clickable in Outlook and renders correctly.
+  // We apply the same color to background and border.
+  // Note: Gradients on borders are not supported, so the border will be solid color fallback.
+  // The background-clip: padding-box helps with some rendering, but mostly we rely on the solid border for the shape.
+
+  // Calculate border width from padding string (approximate since we receive "10px 20px")
+  // For simplicity and robustness, we use the vertical padding for the top/bottom border
+  // and horizontal padding for left/right border.
+
+  // However, simpler is to just apply the padding as border.
+  // e.g. padding: 10px 20px -> border-top: 10px solid color; border-right: 20px solid color...
+
+  // Let's parse the padding string roughly.
+  let borderStyle = `border: ${padding.split(' ')[0] || '10px'} solid ${bgColor}`;
+  if (padding.includes(' ')) {
+     // If "10px 20px", we need to be specific.
+     const parts = padding.split(' ');
+     const v = parts[0];
+     const h = parts[1] || parts[0];
+     borderStyle = `border-top: ${v} solid ${bgColor}; border-bottom: ${v} solid ${bgColor}; border-left: ${h} solid ${bgColor}; border-right: ${h} solid ${bgColor}`;
+  }
+
+  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; ${borderStyle}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; mso-padding-alt: 0; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);">${text}</a>`;
 }
 
 function generateCallToAction(url) {
