@@ -350,7 +350,44 @@ function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', font
   const bgColor = style === 'red' ? BRAND.colors.primaryRed : BRAND.colors.primaryBlue;
   const gradient = style === 'red' ? BRAND.gradients.red : BRAND.gradients.blue;
   
-  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0;">${text}</a>`;
+  // Border-based button technique: Uses thick borders on the <a> tag to simulate padding.
+  // This ensures the entire "button" area is clickable in Outlook and renders correctly.
+  // We apply the same color to background and border.
+  // Note: Gradients on borders are not supported, so the border will be solid color fallback.
+  // The background-clip: padding-box helps with some rendering, but mostly we rely on the solid border for the shape.
+
+  // Calculate border width from padding string (approximate since we receive "10px 20px")
+  // For simplicity and robustness, we use the vertical padding for the top/bottom border
+  // and horizontal padding for left/right border.
+
+  // However, simpler is to just apply the padding as border.
+  // e.g. padding: 10px 20px -> border-top: 10px solid color; border-right: 20px solid color...
+
+  // Parse the padding string to set border widths for button appearance.
+  // Robustly parse padding string for 1–4 values (CSS shorthand)
+  const parts = padding.trim().split(/\s+/);
+  let top, right, bottom, left;
+  if (parts.length === 1) {
+    top = right = bottom = left = parts[0];
+  } else if (parts.length === 2) {
+    top = bottom = parts[0];
+    right = left = parts[1];
+  } else if (parts.length === 3) {
+    top = parts[0];
+    right = left = parts[1];
+    bottom = parts[2];
+  } else if (parts.length === 4) {
+    top = parts[0];
+    right = parts[1];
+    bottom = parts[2];
+    left = parts[3];
+  } else {
+    // fallback: treat as all sides equal
+    top = right = bottom = left = parts[0] || '10px';
+  }
+  const borderStyle = `border-top: ${top} solid ${bgColor}; border-right: ${right} solid ${bgColor}; border-bottom: ${bottom} solid ${bgColor}; border-left: ${left} solid ${bgColor}`;
+
+  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; ${borderStyle}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; mso-padding-alt: 0; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);">${text}</a>`;
 }
 
 function generateCallToAction(url) {
