@@ -420,7 +420,7 @@ function generateHeroLayout(topics) {
     </table>`;
 
   if (topics.length > 1) {
-    html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin: 40px 0;"><tr><td style="border-bottom: 1px solid ${BRAND.colors.accentBg};"></td></tr></table>`;
+    html += getDividerHTML();
     html += generateOffsetLayout(topics.slice(1));
   }
   return html;
