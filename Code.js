@@ -306,7 +306,7 @@ function createNewsletterHTML(data) {
 
                                 <!-- HERO TITLE SECTION -->
                                 <tr>
-                                    <td class="header-padding" style="background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
+                                    <td class="header-padding" style="background-color: ${BRAND.colors.primaryBlue}; background: ${BRAND.gradients.blue}; padding: 40px 30px; text-align: center;">
                                         ${data.date ? `<div style="color: ${BRAND.colors.accentBg}; font-size: 11pt; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;">${Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MMMM yyyy')}</div>` : ''}
                                         ${data.title ? `<h1 class="header-title" style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.contentBg}; font-size: 28pt; margin: 0 0 10px 0; line-height: 1.2;">${data.title}</h1>` : ''}
                                         ${data.subtitle ? `<p style="color: ${BRAND.colors.accentBg}; font-size: 13pt; margin: 0; line-height: 1.4;">${data.subtitle}</p>` : ''}
@@ -357,7 +357,7 @@ function generateCallToAction(url) {
   return `
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-top: 40px;">
         <tr>
-            <td align="center" style="background: ${BRAND.gradients.light}; padding: 30px; border-radius: 8px;">
+            <td align="center" style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 30px; border-radius: 8px;">
                 <h3 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 18pt; margin: 0 0 20px 0;">Ready to Learn More?</h3>
                 ${createButtonHTML('Visit the Orono Technology Digital Learning Hub to learn more', url, 'red', '14px 32px', '14pt')}
             </td>
@@ -418,7 +418,7 @@ function generateHeroLayout(topics) {
         <td>
           <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>
           ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-          ${hero.description ? `<div style="background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
+          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
           ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
         </td>
       </tr>
