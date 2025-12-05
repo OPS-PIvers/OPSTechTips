@@ -506,15 +506,41 @@ function convertRichTextToHtml(richTextValue, mode) {
     let runText = run.getText();
     const textStyle = run.getTextStyle();
     
-    // Apply Bold
-    if (textStyle.isBold()) {
-      runText = `<strong>${runText}</strong>`;
+    if (mode === 'body') {
+      // Split by double newlines (paragraph breaks) to ensure tags don't span across paragraphs
+      const parts = runText.split(/(\n{2,})/);
+      let processedRun = '';
+
+      for (const part of parts) {
+        // If it matches the delimiter (newlines), just append it
+        if (/\n{2,}/.test(part)) {
+          processedRun += part;
+        } else {
+          // It's a text part, apply styles only if not empty
+          if (!part) continue;
+
+          let segment = part;
+          if (textStyle.isBold()) {
+            segment = `<strong>${segment}</strong>`;
+          }
+          if (textStyle.isItalic()) {
+            segment = `<em>${segment}</em>`;
+          }
+          processedRun += segment;
+        }
+      }
+      contentWithTags += processedRun;
+    } else {
+      // Apply Bold
+      if (textStyle.isBold()) {
+        runText = `<strong>${runText}</strong>`;
+      }
+      // Apply Italic
+      if (textStyle.isItalic()) {
+        runText = `<em>${runText}</em>`;
+      }
+      contentWithTags += runText;
     }
-    // Apply Italic
-    if (textStyle.isItalic()) {
-      runText = `<em>${runText}</em>`;
-    }
-    contentWithTags += runText;
   }
   return mode === 'header' ? processTextForHeaders(contentWithTags) : processTextForBody(contentWithTags);
 }
