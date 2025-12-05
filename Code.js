@@ -244,6 +244,8 @@ function createNewsletterHTML(data) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>${stripHtmlTags(data.title) || 'Newsletter'}</title>
     <style>
@@ -260,6 +262,17 @@ function createNewsletterHTML(data) {
         p { word-break: break-word; margin: 0 0 10px 0; }
         a { text-decoration: none; color: inherit; }
         
+        /* DARK MODE */
+        @media (prefers-color-scheme: dark) {
+            body, .body { background-color: #1a1a1a !important; color: #e0e0e0 !important; }
+            .container { background-color: #2d2d2d !important; border-radius: 8px !important; overflow: hidden !important; }
+            .header-title { color: #ffffff !important; }
+            h1, h2, h3, h4, h5, h6 { color: #ffffff !important; }
+            td[style*="background-color: #ffffff"] { background-color: #2d2d2d !important; color: #ffffff !important; }
+            .description-box { background-color: #333333 !important; border-left-color: ${BRAND.colors.secondaryBlue} !important; }
+            .description-text { color: #cccccc !important; }
+        }
+
         /* RESPONSIVE MEDIA QUERIES */
         @media screen and (max-width: 600px) {
             .main-container { width: 100% !important; max-width: 100% !important; }
@@ -273,10 +286,10 @@ function createNewsletterHTML(data) {
         a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
     </style>
 </head>
-<body id="body" style="margin: 0; padding: 0; background-color: ${BRAND.colors.lightBg}; font-family: ${BRAND.fonts.body}; color: ${BRAND.colors.primaryGray};">
+<body id="body" class="body" style="margin: 0; padding: 0; background-color: ${BRAND.colors.lightBg}; font-family: ${BRAND.fonts.body}; color: ${BRAND.colors.primaryGray};">
     
     <!-- PREHEADER HACK -->
-    <div style="display: none; max-height: 0px; overflow: hidden;">
+    <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all;">
       ${preheaderText}
     </div>
     <div style="display: none; max-height: 0px; overflow: hidden;">
@@ -350,7 +363,12 @@ function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', font
   const bgColor = style === 'red' ? BRAND.colors.primaryRed : BRAND.colors.primaryBlue;
   const gradient = style === 'red' ? BRAND.gradients.red : BRAND.gradients.blue;
   
-  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0;">${text}</a>`;
+  // Parse padding string (e.g., '10px 20px') for border-based technique
+  const parts = padding.trim().split(' ');
+  const py = parts[0];
+  const px = parts.length > 1 ? parts[1] : parts[0];
+
+  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; border-top: ${py} solid ${bgColor}; border-bottom: ${py} solid ${bgColor}; border-left: ${px} solid ${bgColor}; border-right: ${px} solid ${bgColor}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);">${text}</a>`;
 }
 
 function generateCallToAction(url) {
@@ -380,7 +398,7 @@ function generateOffsetLayout(topics) {
     const contentCell = `
       <td class="responsive-cell" style="vertical-align: top; padding: 10px 0;">
           <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; font-weight: 600; margin: 0 0 15px 0;">${topic.title}</h2>
-          ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 18px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
+          ${topic.description ? `<div class="description-box" style="background-color: ${BRAND.colors.accentBg}; padding: 18px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div class="description-text" style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
           ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
       </td>`;
 
@@ -399,7 +417,7 @@ function generateStackedLayout(topics) {
               <td>
                   <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 15px 0;">${topic.title}</h2>
                   ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-                  ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
+                  ${topic.description ? `<div class="description-box" style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div class="description-text" style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
                   ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
               </td>
           </tr>
@@ -418,7 +436,7 @@ function generateHeroLayout(topics) {
         <td>
           <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>
           ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
+          ${hero.description ? `<div class="description-box" style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div class="description-text" style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
           ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
         </td>
       </tr>
