@@ -117,11 +117,15 @@ function processEmailAction(column, mode) {
     if (!data.to) throw new Error(`No "To" recipients in column ${column}`);
     if (!data.title) throw new Error(`No Title in column ${column}`);
     
-    const html = createNewsletterHTML(data);
+    let html = createNewsletterHTML(data);
     const subject = stripHtmlTags(data.title) + (data.date ? ' - ' + Utilities.formatDate(new Date(data.date), Session.getScriptTimeZone(), 'MM/dd/yyyy') : '');
     
+    // Fix for emojis: Convert non-ASCII characters to HTML entities
+    // This bypasses transport encoding issues by sending safe ASCII text that renders as Unicode
+    const htmlBody = encodeHtmlEntities(html);
+
     const options = {
-      htmlBody: html,
+      htmlBody: htmlBody,
       cc: data.cc || '',
       bcc: data.bcc || '',
       attachments: []
@@ -220,7 +224,7 @@ function sanitizeNewsletterData(data) {
 
 function createNewsletterHTML(data) {
   const topics = [data.topic1, data.topic2, data.topic3]
-    .filter(t => t.title && (t.url || t.description))
+    .filter((t, i) => (t.title || i === 2) && (t.url || t.description))
     .map(t => ({
       ...t,
       url: convertDriveImageUrl(t.url),
@@ -245,6 +249,17 @@ function createNewsletterHTML(data) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <!--[if mso]>
+    <noscript>
+    <xml>
+    <o:OfficeDocumentSettings>
+    <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+    </xml>
+    </noscript>
+    <![endif]-->
     <title>${stripHtmlTags(data.title) || 'Newsletter'}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap');
@@ -255,10 +270,11 @@ function createNewsletterHTML(data) {
         img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; max-width: 100%; }
         
         /* TYPOGRAPHY */
-        body, td { font-family: ${BRAND.fonts.body}; font-size: 11pt; color: ${BRAND.colors.primaryGray}; }
-        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; word-break: break-word; }
-        p { word-break: break-word; margin: 0 0 10px 0; }
+        body, td { font-family: ${BRAND.fonts.body}; font-size: 12pt; color: ${BRAND.colors.primaryGray}; line-height: 1.6; }
+        h1, h2, h3 { font-family: ${BRAND.fonts.headings}; margin: 0; word-break: break-word; line-height: 1.3; }
+        p { word-break: break-word; margin: 0 0 16px 0; }
         a { text-decoration: none; color: inherit; }
+        p a { color: ${BRAND.colors.primaryBlue} !important; text-decoration: underline !important; }
         
         /* RESPONSIVE MEDIA QUERIES */
         @media screen and (max-width: 600px) {
@@ -323,10 +339,9 @@ function createNewsletterHTML(data) {
                                 <!-- Footer -->
                                 <tr>
                                     <td style="background-color: #1d2a5d; padding: 25px 30px; text-align: right;">
-                                        ${logos.secondary ? `<img src="${logos.secondary}" alt="Icon" width="60" style="width: 60px; max-width: 60px; height: auto; margin-bottom: 15px; display: inline-block; border: 0;">` : ''}
-                                        <p style="color: ${BRAND.colors.accentBg}; font-size: 10pt; margin: 0; line-height: 1.5;">
+                                        <p style="color: ${BRAND.colors.accentBg}; font-size: 12pt; margin: 0; line-height: 1.5;">
                                             ${new Date().getFullYear()} Orono Technology Digital Learning Hub<br>
-                                            <span style="color: ${BRAND.colors.secondaryBlue};">Empowering Digital Learning and Innovation</span>
+                                            <span style="color: ${BRAND.colors.secondaryGray}; font-size: 10pt;">Empowering Responsible Digital Learning and Innovation</span>
                                         </p>
                                     </td>
                                 </tr>
@@ -346,11 +361,11 @@ function createNewsletterHTML(data) {
 
 // --- LAYOUT GENERATORS ---
 
-function createButtonHTML(text, url, style = 'blue', padding = '10px 20px', fontSize = '11pt') {
+function createButtonHTML(text, url, style = 'blue', padding = '14px 28px', fontSize = '12pt') {
   const bgColor = style === 'red' ? BRAND.colors.primaryRed : BRAND.colors.primaryBlue;
   const gradient = style === 'red' ? BRAND.gradients.red : BRAND.gradients.blue;
   
-  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0;">${text}</a>`;
+  return `<a href="${url}" style="background-color: ${bgColor}; background: ${gradient}; color: #ffffff; text-decoration: none; padding: ${padding}; border-radius: 6px; font-size: ${fontSize}; font-weight: 600; font-family: ${BRAND.fonts.headings}; display: inline-block; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25); border: 0; line-height: 1.2;">${text}</a>`;
 }
 
 function generateCallToAction(url) {
@@ -359,7 +374,7 @@ function generateCallToAction(url) {
         <tr>
             <td align="center" style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 30px; border-radius: 8px;">
                 <h3 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 18pt; margin: 0 0 20px 0;">Ready to Learn More?</h3>
-                ${createButtonHTML('Visit the Orono Technology Digital Learning Hub to learn more', url, 'red', '14px 32px', '14pt')}
+                ${createButtonHTML('Visit the Digital Learning Hub', url, 'red', '14px 32px', '14pt')}
             </td>
         </tr>
     </table>`;
@@ -370,21 +385,30 @@ function generateOffsetLayout(topics) {
     const divider = index > 0 ? getDividerHTML() : '';
     const isEven = index % 2 === 0;
     
+    // Title positioned above the columns
+    const titleHTML = topic.title ? `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 10px;">
+        <tr>
+          <td>
+             <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; font-weight: 600; margin: 0; text-align: left;">${topic.title}</h2>
+          </td>
+        </tr>
+      </table>` : '';
+    
     const imageCell = topic.url ? `
-      <td width="33%" class="responsive-cell" style="padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'}; vertical-align: top;">
-          <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};">
+      <td width="260" class="responsive-cell" valign="top" style="width: 260px; padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'};">
+          <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;">
               <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;">
           </div>
       </td>` : '';
 
     const contentCell = `
-      <td class="responsive-cell" style="vertical-align: top; padding: 10px 0;">
-          <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; font-weight: 600; margin: 0 0 15px 0;">${topic.title}</h2>
-          ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 18px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
-          ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
+      <td class="responsive-cell" valign="top" style="vertical-align: top;">
+          ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 15px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
+          ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
       </td>`;
 
-    return divider + `
+    return divider + titleHTML + `
       <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
           <tr>${isEven ? imageCell + contentCell : contentCell + imageCell}</tr>
       </table>`;
@@ -393,14 +417,16 @@ function generateOffsetLayout(topics) {
 
 function generateStackedLayout(topics) {
   return topics.map((topic, index) => {
-    return (index > 0 ? getDividerHTML() : '') + `
+    const divider = index > 0 ? getDividerHTML() : '';
+    
+    return divider + `
       <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
           <tr>
               <td>
-                  <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 15px 0;">${topic.title}</h2>
-                  ${topic.url ? `<div style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-                  ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
-                  ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
+                  ${topic.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${topic.title}</h2>` : ''}
+                  ${topic.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
+                  ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 15px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: left;">${topic.description}</div></div>` : ''}
+                  ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
               </td>
           </tr>
       </table>`;
@@ -412,21 +438,48 @@ function generateHeroLayout(topics) {
   let html = '';
   const hero = topics[0];
   
+  // Hero Section
   html += `
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
         <td>
-          <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>
-          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg};"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 25px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: center;">${hero.description}</div></div>` : ''}
+          ${hero.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>` : ''}
+          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
+          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 15px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: left;">${hero.description}</div></div>` : ''}
           ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
         </td>
       </tr>
     </table>`;
 
-  if (topics.length > 1) {
+  // Sub-sections (Grid Layout for 2 topics, Stacked otherwise)
+  const subTopics = topics.slice(1);
+  if (subTopics.length > 0) {
     html += getDividerHTML();
-    html += generateOffsetLayout(topics.slice(1));
+    
+    if (subTopics.length === 2) {
+      // 2-Column Grid
+      const t1 = subTopics[0];
+      const t2 = subTopics[1];
+      
+      const renderGridItem = (topic, paddingStyle) => `
+        <td class="responsive-cell" width="260" valign="top" style="width: 260px; ${paddingStyle}">
+           ${topic.title ? `<h3 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 18pt; margin: 0 0 15px 0;">${topic.title}</h3>` : ''}
+           ${topic.url ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
+           ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 15px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 10pt; line-height: 1.5;">${topic.description}</div></div>` : ''}
+           ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '10px 20px', '10pt')}</div>` : ''}
+        </td>`;
+
+      html += `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+          <tr>
+            ${renderGridItem(t1, 'padding-right: 10px;')}
+            ${renderGridItem(t2, 'padding-left: 10px;')}
+          </tr>
+        </table>`;
+    } else {
+      // Fallback for single item or > 2 items (though data model limits to 3 total usually)
+      html += generateStackedLayout(subTopics);
+    }
   }
   return html;
 }
@@ -552,3 +605,20 @@ function processTextForBody(text) {
 
 function stripHtmlTags(html) { return html ? html.replace(/<[^>]+>/g, '') : ''; }
 function sanitizeHtml(html) { return html; }
+
+/**
+ * Encodes non-ASCII characters (including emojis) to HTML entities.
+ * This ensures they survive the email transport layers without turning into '???'.
+ */
+function encodeHtmlEntities(text) {
+  const chars = [];
+  for (const char of text) {
+    const code = char.codePointAt(0);
+    if (code > 127) {
+      chars.push('&#' + code + ';');
+    } else {
+      chars.push(char);
+    }
+  }
+  return chars.join('');
+}
