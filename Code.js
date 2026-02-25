@@ -98,7 +98,8 @@ function generateNewsletterHTMLFromColumn(column) {
     const sheet = SpreadsheetApp.getActiveSheet();
     const data = getNewsletterDataFromColumn(sheet, column);
     const html = createNewsletterHTML(data);
-    return html;
+    // Encode to HTML entities to match Draft output and ensure stability
+    return encodeHtmlEntities(html);
   } catch (error) {
     console.error(`Error generating HTML: ${error.message}`);
     throw error;
@@ -385,31 +386,22 @@ function generateOffsetLayout(topics) {
     const divider = index > 0 ? getDividerHTML() : '';
     const isEven = index % 2 === 0;
     
-    // Title positioned above the columns
-    const titleHTML = topic.title ? `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 10px;">
-        <tr>
-          <td>
-             <h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; font-weight: 600; margin: 0; text-align: left;">${topic.title}</h2>
-          </td>
-        </tr>
-      </table>` : '';
-    
     const imageCell = topic.url ? `
-      <td width="260" class="responsive-cell" valign="top" style="width: 260px; padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'};">
-          <div class="responsive-image" style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;">
-              <img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;">
+      <td width="240" class="responsive-cell" valign="top" style="width: 240px; padding: ${isEven ? '0 20px 0 0' : '0 0 0 20px'};">
+          <div style="border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;">
+              <img src="${topic.url}" alt="${escapeAttribute(topic.title)}" width="240" style="width: 100%; height: auto; display: block; border: 0;">
           </div>
       </td>` : '';
 
     const contentCell = `
       <td class="responsive-cell" valign="top" style="vertical-align: top;">
-          ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 15px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6;">${topic.description}</div></div>` : ''}
-          ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
+          ${topic.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 20pt; font-weight: 600; margin: 0 0 12px 0; line-height: 1.3;">${topic.title}</h2>` : ''}
+          ${topic.description ? `<div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; margin-bottom: 15px;">${topic.description}</div>` : ''}
+          ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left;">${createButtonHTML(topic.buttonText, topic.buttonUrl)}</div>` : ''}
       </td>`;
 
-    return divider + titleHTML + `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+    return divider + `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 20px;">
           <tr>${isEven ? imageCell + contentCell : contentCell + imageCell}</tr>
       </table>`;
   }).join('');
@@ -420,13 +412,13 @@ function generateStackedLayout(topics) {
     const divider = index > 0 ? getDividerHTML() : '';
     
     return divider + `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 30px;">
           <tr>
               <td>
-                  ${topic.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${topic.title}</h2>` : ''}
-                  ${topic.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-                  ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 15px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: left;">${topic.description}</div></div>` : ''}
-                  ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
+                  ${topic.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center; line-height: 1.3;">${topic.title}</h2>` : ''}
+                  ${topic.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${escapeAttribute(topic.title)}" width="540" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
+                  ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 20px; border-radius: 10px; border-left: 5px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: left;">${topic.description}</div></div>` : ''}
+                  ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: center; margin-top: 25px;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
               </td>
           </tr>
       </table>`;
@@ -440,44 +432,49 @@ function generateHeroLayout(topics) {
   
   // Hero Section
   html += `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 30px;">
       <tr>
         <td>
-          ${hero.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 24pt; margin: 0 0 20px 0; text-align: center;">${hero.title}</h2>` : ''}
-          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${hero.url}" alt="${hero.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; background: ${BRAND.gradients.light}; padding: 15px; border-radius: 8px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 11pt; line-height: 1.6; text-align: left;">${hero.description}</div></div>` : ''}
-          ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 20px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '12px 24px', '12pt')}</div>` : ''}
+          ${hero.title ? `<h2 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 26pt; margin: 0 0 20px 0; text-align: center; line-height: 1.2;">${hero.title}</h2>` : ''}
+          ${hero.url ? `<div style="margin-bottom: 25px; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${hero.url}" alt="${escapeAttribute(hero.title)}" width="540" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
+          ${hero.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 25px; border-radius: 10px; border-left: 5px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 12pt; line-height: 1.6; text-align: left;">${hero.description}</div></div>` : ''}
+          ${hero.buttonText && hero.buttonUrl ? `<div style="text-align: center; margin-top: 25px;">${createButtonHTML(hero.buttonText, hero.buttonUrl, 'blue', '14px 30px', '13pt')}</div>` : ''}
         </td>
       </tr>
     </table>`;
 
-  // Sub-sections (Grid Layout for 2 topics, Stacked otherwise)
+  // Sub-sections
   const subTopics = topics.slice(1);
   if (subTopics.length > 0) {
     html += getDividerHTML();
     
     if (subTopics.length === 2) {
-      // 2-Column Grid
       const t1 = subTopics[0];
       const t2 = subTopics[1];
       
-      const renderGridItem = (topic, paddingStyle) => `
-        <td class="responsive-cell" width="260" valign="top" style="width: 260px; ${paddingStyle}">
-           ${topic.title ? `<h3 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 18pt; margin: 0 0 15px 0;">${topic.title}</h3>` : ''}
-           ${topic.url ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid ${BRAND.colors.accentBg}; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${topic.title}" style="width: 100%; height: auto; display: block; border: 0; max-width: 100%;"></div>` : ''}
-           ${topic.description ? `<div style="background-color: ${BRAND.colors.accentBg}; padding: 15px; border-radius: 6px; border-left: 4px solid ${BRAND.colors.primaryBlue};"><div style="color: ${BRAND.colors.primaryGray}; font-size: 10pt; line-height: 1.5;">${topic.description}</div></div>` : ''}
-           ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left; margin-top: 15px;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '10px 20px', '10pt')}</div>` : ''}
+      const renderGridItem = (topic) => `
+        <td class="responsive-cell" width="260" valign="top" style="width: 260px; background-color: ${BRAND.colors.accentBg}; border-radius: 10px;">
+           <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+             <tr>
+               <td style="padding: 20px;">
+                 ${topic.title ? `<h3 style="font-family: ${BRAND.fonts.headings}; color: ${BRAND.colors.primaryBlue}; font-size: 16pt; margin: 0 0 15px 0; line-height: 1.3;">${topic.title}</h3>` : ''}
+                 ${topic.url ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #d1d5db; font-size: 0; line-height: 0;"><img src="${topic.url}" alt="${escapeAttribute(topic.title)}" width="220" style="width: 100%; height: auto; display: block; border: 0;"></div>` : ''}
+                 ${topic.description ? `<div style="color: ${BRAND.colors.primaryGray}; font-size: 10pt; line-height: 1.5; margin-bottom: 15px;">${topic.description}</div>` : ''}
+                 ${topic.buttonText && topic.buttonUrl ? `<div style="text-align: left;">${createButtonHTML(topic.buttonText, topic.buttonUrl, 'blue', '10px 20px', '10pt')}</div>` : ''}
+               </td>
+             </tr>
+           </table>
         </td>`;
 
       html += `
         <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
           <tr>
-            ${renderGridItem(t1, 'padding-right: 10px;')}
-            ${renderGridItem(t2, 'padding-left: 10px;')}
+            ${renderGridItem(t1)}
+            <td width="20" class="responsive-cell" style="width: 20px; font-size: 0; line-height: 0;">&nbsp;</td>
+            ${renderGridItem(t2)}
           </tr>
         </table>`;
     } else {
-      // Fallback for single item or > 2 items (though data model limits to 3 total usually)
       html += generateStackedLayout(subTopics);
     }
   }
@@ -508,8 +505,34 @@ function getLogosFromConfig() {
 
 function convertDriveImageUrl(url) {
   if (!url || typeof url !== 'string') return '';
-  const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? `https://drive.google.com/uc?export=view&id=${match[1]}` : url;
+  
+  const cleanUrl = url.trim();
+  
+  // Extract ID from various Google Drive URL formats
+  let id = '';
+  const patterns = [
+    /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/,
+    /drive\.google\.com\/uc\?id=([a-zA-Z0-9_-]+)/,
+    /docs\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = cleanUrl.match(pattern);
+    if (match) {
+      id = match[1];
+      break;
+    }
+  }
+  
+  // If no match but it looks like just an ID
+  if (!id && cleanUrl.length > 20 && !cleanUrl.includes('/') && !cleanUrl.includes('.')) {
+    id = cleanUrl;
+  }
+  
+  // Use the Thumbnail/Preview endpoint which is significantly more reliable for embedding
+  // sz=w1200 ensures we get a high-quality version suitable for retina displays
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1200` : cleanUrl;
 }
 
 // --- RESTORED RICH TEXT LOGIC (With Headers Fix) ---
@@ -604,6 +627,9 @@ function processTextForBody(text) {
 }
 
 function stripHtmlTags(html) { return html ? html.replace(/<[^>]+>/g, '') : ''; }
+function escapeAttribute(text) {
+  return stripHtmlTags(text).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 function sanitizeHtml(html) { return html; }
 
 /**

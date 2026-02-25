@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 This is a Google Apps Script project managed with clasp (Command Line Apps Script Projects). The project uses the V8 runtime and is configured for the America/Chicago timezone.
