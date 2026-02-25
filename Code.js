@@ -38,6 +38,7 @@ function onOpen() {
     .addItem('Preview Newsletter', 'showPreviewPicker')
     .addSeparator()
     .addItem('Generate HTML Only', 'showGeneratePicker')
+    .addItem('Generate Landing Page', 'generateLandingPage')
     .addToUi();
 }
 
@@ -59,26 +60,38 @@ function showDialog(action, title) {
 
 function createColumnPickerDialog(action) {
   const sheet = SpreadsheetApp.getActiveSheet();
-  const columns = ['B', 'C', 'D', 'E', 'F'];
-  const options = [];
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 2) return '<h3>No newsletter columns found.</h3>';
   
-  // Batch read rows 1 (Date) and 2 (Title) for columns B-F
-  const range = sheet.getRange('B1:F2');
-  const values = range.getValues(); // Returns 2D array: [[B1, C1, D1, E1, F1], [B2, C2, D2, E2, F2]] (row 0 = dates, row 1 = titles)
-
-  columns.forEach((col, index) => {
-    const dateCell = values[0][index];
-    const dateStr = dateCell ? Utilities.formatDate(new Date(dateCell), Session.getScriptTimeZone(), 'MM/dd/yyyy') : 'No Date';
-
-    const titleCell = values[1][index];
-    const titleStr = titleCell ? titleCell.toString().substring(0, 30) + (titleCell.toString().length > 30 ? '...' : '') : 'No Title';
+  // Read row 1 (Date), row 2 (Title), and row 4 (Topic 1 Title) 
+  // from Column B (2) to the end
+  const dataRange = sheet.getRange(1, 2, 4, lastCol - 1);
+  const dataValues = dataRange.getValues(); 
+  
+  const options = [];
+  for (let i = 0; i < (lastCol - 1); i++) {
+    const topic1Title = dataValues[3][i]; // Row 4
     
+    // Only include columns that have a Topic 1 Title in row 4
+    if (!topic1Title || topic1Title.toString().trim() === '') continue;
+
+    const dateCell = dataValues[0][i]; // Row 1
+    const titleCell = dataValues[1][i]; // Row 2
+    
+    const dateStr = dateCell ? Utilities.formatDate(new Date(dateCell), Session.getScriptTimeZone(), 'MM/dd/yyyy') : 'No Date';
+    const displayTitle = titleCell ? titleCell.toString() : 'Untitled Newsletter';
+    const titleStr = displayTitle.substring(0, 30) + (displayTitle.length > 30 ? '...' : '');
+    
+    const actualColLetter = getColumnLetter(i + 2);
+
     options.push({
-      column: col,
+      column: actualColLetter,
       date: dateStr,
       title: titleStr
     });
-  });
+  }
+
+  if (options.length === 0) return '<h3>No newsletters found with titles.</h3>';
 
   try {
     const template = HtmlService.createTemplateFromFile('Picker');
@@ -88,6 +101,19 @@ function createColumnPickerDialog(action) {
   } catch (e) {
     return '<h3>Error: Picker.html file missing. Please create it.</h3>';
   }
+}
+
+/**
+ * Helper to convert column index to Letter (e.g., 2 -> B, 28 -> AB)
+ */
+function getColumnLetter(col) {
+  let letter = '';
+  while (col > 0) {
+    let temp = (col - 1) % 26;
+    letter = String.fromCharCode(65 + temp) + letter;
+    col = (col - temp - 1) / 26;
+  }
+  return letter;
 }
 
 // --- CORE LOGIC ---
@@ -147,8 +173,158 @@ function processEmailAction(column, mode) {
   }
 }
 
-// --- DATA EXTRACTION ---
+function generateLandingPage() {
+  try {
+    SpreadsheetApp.getActive().toast('Building Landing Page...', 'Status', -1);
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const lastCol = sheet.getLastColumn();
+    
+    if (lastCol < 2) throw new Error('No newsletter columns found.');
+    
+    // Batch read row 4 for all columns to find valid newsletters quickly
+    const topic1Range = sheet.getRange(4, 2, 1, lastCol - 1);
+    const topic1Values = topic1Range.getValues()[0];
+    
+    const newsletters = [];
+    for (let i = 0; i < topic1Values.length; i++) {
+      const topic1Title = topic1Values[i];
+      
+      // Only include if Row 4 (Topic 1 Title) is not empty
+      if (topic1Title && topic1Title.toString().trim() !== '') {
+        const colLetter = getColumnLetter(i + 2);
+        const data = getNewsletterDataFromColumn(sheet, colLetter);
+        newsletters.push({
+          ...data,
+          column: colLetter
+        });
+      }
+    }
 
+    if (newsletters.length === 0) {
+      throw new Error('No newsletters found with a Topic 1 Title in Row 4.');
+    }
+
+    const html = createLandingPageHTML(newsletters);
+    const encodedHtml = encodeHtmlEntities(html);
+    
+    // Reuse the Picker dialog logic to show the generated HTML
+    const template = HtmlService.createTemplateFromFile('Picker');
+    template.action = 'generate';
+    template.options = []; // Not needed for the result view
+    
+    const htmlOutput = HtmlService.createHtmlOutput(template.evaluate().getContent())
+      .setWidth(450)
+      .setHeight(500)
+      .setTitle('Landing Page HTML');
+    
+    // We need to pass the result to the client side
+    // Since we're reusing the template, we'll use a trick or just show a separate simple dialog
+    showGeneratedHtmlDialog(encodedHtml, 'Landing Page HTML');
+    
+    SpreadsheetApp.getActive().toast('Landing Page Generated!', 'Success', 3);
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('Error: ' + error.message);
+  }
+}
+
+function showGeneratedHtmlDialog(html, title) {
+  const css = `
+    <style>
+      body { font-family: 'Roboto', sans-serif; padding: 20px; background: #f9fafb; }
+      h3 { font-family: 'Lexend', sans-serif; color: #2d3f89; margin-top: 0; }
+      textarea { width: 100%; height: 300px; margin: 15px 0; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; font-family: monospace; resize: none; }
+      .btn { background: #2d3f89; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+      .btn:hover { background: #1d2a5d; }
+    </style>
+  `;
+  
+  const content = `
+    ${css}
+    <h3>${title}</h3>
+    <p style="font-size: 14px; color: #666;">Copy this HTML to create a summary page of all your tech tips.</p>
+    <textarea id="output" readonly>${html}</textarea>
+    <button class="btn" onclick="copyText()">Copy to Clipboard</button>
+    <script>
+      function copyText() {
+        const copyText = document.getElementById("output");
+        copyText.select();
+        document.execCommand("copy");
+        const btn = event.target;
+        btn.innerText = "Copied!";
+        btn.style.background = "#10b981";
+        setTimeout(() => { btn.innerText = "Copy to Clipboard"; btn.style.background = "#2d3f89"; }, 2000);
+      }
+    </script>
+  `;
+  
+  const htmlOutput = HtmlService.createHtmlOutput(content)
+    .setWidth(450)
+    .setHeight(480)
+    .setTitle(title);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, title);
+}
+
+function createLandingPageHTML(newsletters) {
+  const logos = getLogosFromConfig();
+  
+  const cardsHTML = newsletters.map(n => {
+    // Get the first available image and convert it to preview format
+    const rawImage = n.topic1.url || n.topic2.url || n.topic3.url || '';
+    const heroImage = convertDriveImageUrl(rawImage);
+    const dateStr = n.date ? Utilities.formatDate(new Date(n.date), Session.getScriptTimeZone(), 'MMMM d, yyyy') : '';
+    
+    return `
+      <!-- Card -->
+      <div class="card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: transform 0.2s; margin-bottom: 30px;">
+        ${heroImage ? `<div style="height: 200px; overflow: hidden;"><img src="${heroImage}" style="width: 100%; height: 100%; object-fit: cover;"></div>` : ''}
+        <div style="padding: 25px;">
+          <div style="color: ${BRAND.colors.primaryBlue}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">${dateStr}</div>
+          <h2 style="font-family: ${BRAND.fonts.headings}; color: #333; margin: 0 0 12px 0; font-size: 20px; line-height: 1.3;">${n.title}</h2>
+          <div style="color: #666; font-size: 15px; line-height: 1.5; margin-bottom: 20px;">${stripHtmlTags(n.subtitle || '').substring(0, 120)}...</div>
+          <a href="#" style="display: inline-block; background: ${BRAND.colors.primaryBlue}; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">View Tech Tip</a>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Tips Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; color: #333; }
+        .header { background: ${BRAND.colors.primaryBlue}; background: ${BRAND.gradients.blue}; color: white; padding: 60px 20px; text-align: center; }
+        .container { max-width: 1000px; margin: -40px auto 60px auto; padding: 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        h1 { font-family: 'Lexend', sans-serif; font-size: 36px; margin: 0 0 10px 0; }
+        .subtitle { font-size: 18px; opacity: 0.9; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); height: 100%; display: flex; flex-direction: column; }
+        .card:hover { transform: translateY(-5px); transition: transform 0.3s ease; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        ${logos.main ? `<img src="${logos.main}" alt="Logo" style="max-width: 180px; margin-bottom: 20px; filter: brightness(0) invert(1);">` : ''}
+        <h1>Digital Learning Tech Tips</h1>
+        <p class="subtitle">Explore our latest guides and resources for modern education.</p>
+    </div>
+    
+    <div class="container">
+        <div class="grid">
+            ${cardsHTML}
+        </div>
+    </div>
+    
+    <footer style="text-align: center; padding: 40px; color: #999; font-size: 14px;">
+        &copy; ${new Date().getFullYear()} Orono Technology Digital Learning Hub
+    </footer>
+</body>
+</html>`;
+}
 function getNewsletterDataFromColumn(sheet, column) {
   // Batch read rows 1-23
   // 1-based indices in sheet:
